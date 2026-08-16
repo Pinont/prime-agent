@@ -125,6 +125,12 @@ const CANONICAL_BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 		argumentHint: "[status|on|off|preview|upload|upload-current|upload-all|login]",
 	},
 	{ name: "context", description: "Show token, cost, and context usage for agent and sub-agents" },
+	{
+		name: "stats",
+		description: "Show activity, learning, token and cost stats",
+		argumentHint: "[--json]",
+		takesArgument: true,
+	},
 	{ name: "changelog", description: "Show changelog entries" },
 	{
 		name: "update",

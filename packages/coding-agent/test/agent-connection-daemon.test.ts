@@ -906,6 +906,26 @@ describe("DaemonAgentConnection", () => {
 		expect(commands.map((command) => command.promoteOwnedSession)).toEqual([true, false]);
 	});
 
+	it("gates side-question model overrides on the daemon capability", async () => {
+		const oldClient = new FakeDaemonClient();
+		const oldConnection = new DaemonAgentConnection(asDaemonClient(oldClient), "active-original");
+		const model = getModel("openai", "gpt-5.1");
+		await expect(oldConnection.startSideQuestion("turn-1", "Question", undefined, model)).rejects.toThrow(
+			"older build without side-question model overrides",
+		);
+		expect(oldClient.requests).toHaveLength(0);
+
+		const newClient = new FakeDaemonClient();
+		newClient.serverCapabilities.add("side_question_model");
+		const newConnection = new DaemonAgentConnection(asDaemonClient(newClient), "active-original");
+		await newConnection.startSideQuestion("turn-1", "Question", undefined, model);
+		const sent = newClient.requests.find(
+			(command): command is Extract<DaemonCommand, { type: "start_side_question" }> =>
+				command.type === "start_side_question",
+		);
+		expect(sent?.model).toEqual({ provider: model.provider, id: model.id });
+	});
+
 	it("gates side-question follow-up transcripts on the daemon capability", async () => {
 		const oldDaemonClient = new FakeDaemonClient();
 		const oldConnection = new DaemonAgentConnection(asDaemonClient(oldDaemonClient), "active-original");

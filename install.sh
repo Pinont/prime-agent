@@ -52,6 +52,7 @@ prime_agent_screen_render_lab_width=0
 prime_agent_screen_compact=0
 prime_agent_download_dir=
 prime_agent_bootstrap_kernel_on_install=0
+prime_agent_dry_run=0
 prime_agent_screen_title=
 prime_agent_screen_status=
 prime_agent_screen_detail=
@@ -59,6 +60,42 @@ prime_agent_screen_question=
 prime_agent_animation_frame=0
 
 main() {
+	# Parse flags before anything else so --dry-run / --help never touch disk.
+	prime_agent_positional=
+	for arg in "$@"; do
+		case "$arg" in
+			--dry-run) prime_agent_dry_run=1 ;;
+			--help|-h)
+				cat <<EOF
+Usage: install.sh [options] [version|channel]
+
+Options:
+  --dry-run   Check the environment, resolve the release version, and print
+              the exact install plan (URLs, checksums, command) without
+              downloading, writing, or installing anything.
+  -h, --help  Show this help.
+
+Environment:
+  PRIME_AGENT_DOWNLOAD_BASE_URL  Download base URL (required for local copies)
+  PRIME_AGENT_RELEASE_CHANNEL    Release channel: stable (default) or beta
+  PRIME_AGENT_PACKAGE            Package name (default: prime-agent)
+  PRIME_AGENT_CMD                Command name (default: prime-agent)
+  PRIME_AGENT_BOOTSTRAP_KERNEL_ON_INSTALL  1 to prepare IPython runtime
+EOF
+				exit 0
+				;;
+			*)
+				if [ -n "$prime_agent_positional" ]; then
+					printf 'error: unexpected extra argument: %s
+' "$arg" >&2
+					exit 1
+				fi
+				prime_agent_positional="$arg"
+				;;
+		esac
+	done
+	set -- ${prime_agent_positional:+"$prime_agent_positional"}
+
 	if [ "$prime_agent_base_url" = "$prime_agent_unconfigured_base_url" ]; then
 		printf 'error: installer download URL is not configured.\n' >&2
 		printf 'Set PRIME_AGENT_DOWNLOAD_BASE_URL or use the installer published by the release workflow.\n' >&2
@@ -101,6 +138,34 @@ main() {
 	version="$(resolve_prime_agent_version "$@")"
 	tarball_name="$prime_agent_package-$version.tgz"
 	tarball_url="$prime_agent_base_url/releases/v$version/$tarball_name"
+	checksums_url="$prime_agent_base_url/releases/v$version/SHA256SUMS"
+
+	if [ "$prime_agent_dry_run" = 1 ]; then
+		printf '\n%sPrime Agent install dry run%s\n' "$prime_agent_bold" "$prime_agent_reset"
+		printf '  Channel:       %s\n' "$prime_agent_release_channel"
+		printf '  Version:       v%s\n' "$version"
+		printf '  Package:       %s\n' "$prime_agent_package"
+		printf '  Command:       %s\n' "$prime_agent_cmd"
+		printf '  Tarball URL:   %s\n' "$tarball_url"
+		printf '  Checksums URL: %s\n' "$checksums_url"
+		if command -v "$prime_agent_cmd" >/dev/null 2>&1; then
+			printf '  Existing:      %s found at %s (will be replaced by npm install -g)\n' "$prime_agent_cmd" "$(command -v "$prime_agent_cmd")"
+		else
+			printf '  Existing:      none found on PATH\n'
+		fi
+		printf '  Install cmd:   npm install -g %s\n' "$tarball_name"
+		if command -v curl >/dev/null 2>&1; then
+			if curl -fsSI "$checksums_url" >/dev/null 2>&1; then
+				printf '  Release check: v%s and SHA256SUMS are reachable at the download base URL.\n' "$version"
+			else
+				printf '%s  Release check: v%s checksums are NOT reachable at %s%s\n' "$prime_agent_color_warning" "$version" "$prime_agent_base_url" "$prime_agent_reset"
+			fi
+		else
+			printf '  Release check: skipped (curl not available; install would fail later)\n'
+		fi
+		printf '\nDry run only: nothing was downloaded, written, or installed.\n'
+		exit 0
+	fi
 
 	confirm_install "$version" "$tarball_url"
 	confirm_kernel_runtime_setup

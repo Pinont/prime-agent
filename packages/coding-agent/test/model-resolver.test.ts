@@ -6,6 +6,7 @@ import {
 	parseModelPattern,
 	resolveCliModel,
 	resolveModelScopeFromModels,
+	resolveTaskModel,
 } from "../src/core/model-resolver.js";
 
 // Mock models for testing
@@ -645,5 +646,26 @@ describe("default model selection", () => {
 
 		expect(result.model?.provider).toBe("prime-inference");
 		expect(result.model?.id).toBe("openai/gpt-5.5");
+	});
+});
+
+describe("task model profiles", () => {
+	test("inherits the current model when unset", async () => {
+		const result = await resolveTaskModel({
+			role: "plan",
+			currentModel: mockModels[0]!,
+			modelRegistry: {} as never,
+		});
+		expect(result).toMatchObject({ ok: true, value: { modelKey: "anthropic/claude-sonnet-4-5" } });
+	});
+
+	test("returns a repairable error rather than falling back when a profile is unavailable", async () => {
+		const result = await resolveTaskModel({
+			role: "delegate",
+			currentModel: mockModels[0]!,
+			assignment: { modelKey: "local/missing", source: "custom" },
+			modelRegistry: { getAll: () => [], canUseModel: async () => false } as never,
+		});
+		expect(result).toMatchObject({ ok: false, code: "profile_unavailable" });
 	});
 });

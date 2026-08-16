@@ -40,6 +40,11 @@ export interface RetrySettings {
 	provider?: ProviderRetrySettings;
 }
 
+export interface ShellFollowupSettings {
+	enabled?: boolean;
+	model?: string;
+}
+
 export interface TerminalSettings {
 	showImages?: boolean; // default: true (show image type and dimensions)
 	clearOnShrink?: boolean; // default: false (clear empty rows when content shrinks)
@@ -119,11 +124,23 @@ export type McpServerConfig =
 			disabledTools?: string[];
 	  };
 
+export type ModelRole = "plan" | "build" | "delegate";
+
+export interface ModelRoleAssignment {
+	/** Canonical `provider/model-id` reference; credentials are never stored here. */
+	modelKey: string;
+	source: "builtin" | "custom" | "imported";
+}
+
+export type ModelRoleSettings = Partial<Record<ModelRole, ModelRoleAssignment>>;
+
 export interface Settings {
 	onboardingShown?: boolean;
 	onboardingCompleted?: boolean;
 	defaultProvider?: string;
 	defaultModel?: string;
+	/** Optional task profiles. Unset roles inherit the current session model. */
+	modelRoles?: ModelRoleSettings;
 	recentModels?: string[]; // "provider/id" keys, most-recently-used first
 	defaultThinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 	defaultServiceTier?: ServiceTier;
@@ -139,6 +156,7 @@ export interface Settings {
 	telemetry?: TelemetrySettings;
 	branchSummary?: BranchSummarySettings;
 	retry?: RetrySettings;
+	shellFollowup?: ShellFollowupSettings;
 	hideThinkingBlock?: boolean;
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows)
 	quietStartup?: boolean;
@@ -708,6 +726,25 @@ export class SettingsManager {
 		this.save();
 	}
 
+	getModelRoles(): ModelRoleSettings {
+		return structuredClone(this.settings.modelRoles ?? {});
+	}
+
+	setModelRole(role: ModelRole, assignment: ModelRoleAssignment | undefined): void {
+		const roles = { ...(this.globalSettings.modelRoles ?? {}) };
+		if (assignment) roles[role] = { ...assignment };
+		else delete roles[role];
+		this.globalSettings.modelRoles = roles;
+		this.markModified("modelRoles");
+		this.save();
+	}
+
+	resetModelRoles(): void {
+		this.globalSettings.modelRoles = {};
+		this.markModified("modelRoles");
+		this.save();
+	}
+
 	getRecentModels(): string[] {
 		return this.settings.recentModels ?? [];
 	}
@@ -1104,6 +1141,28 @@ export class SettingsManager {
 
 	getThinkingBudgets(): ThinkingBudgetsSettings | undefined {
 		return this.settings.thinkingBudgets;
+	}
+
+	getShellFollowupEnabled(): boolean {
+		return this.settings.shellFollowup?.enabled ?? false;
+	}
+
+	setShellFollowupEnabled(enabled: boolean): void {
+		if (!this.globalSettings.shellFollowup) this.globalSettings.shellFollowup = {};
+		this.globalSettings.shellFollowup.enabled = enabled;
+		this.markModified("shellFollowup", "enabled");
+		this.save();
+	}
+
+	getShellFollowupModel(): string {
+		return this.settings.shellFollowup?.model ?? "";
+	}
+
+	setShellFollowupModel(model: string): void {
+		if (!this.globalSettings.shellFollowup) this.globalSettings.shellFollowup = {};
+		this.globalSettings.shellFollowup.model = model;
+		this.markModified("shellFollowup", "model");
+		this.save();
 	}
 
 	getShowImages(): boolean {

@@ -68,6 +68,11 @@ describe("daemon protocol helpers", () => {
 		);
 	});
 
+	it("capability-gates side-question model overrides at schema revision 17", () => {
+		expect(DAEMON_SCHEMA_REVISION).toBe(17);
+		expect(DAEMON_DEFAULT_SERVER_CAPABILITIES).toContain("side_question_model");
+	});
+
 	it("capability-gates explicit subagent deletion instead of schema-gating it", () => {
 		expect(DAEMON_COMMAND_COMPATIBILITY.delete_rlm_subagent).toEqual({
 			minProtocol: 7,

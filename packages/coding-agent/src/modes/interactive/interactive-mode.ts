@@ -125,6 +125,7 @@ import {
 	parseSlashCommand,
 	resolveBuiltinSlashCommandName,
 } from "../../core/slash-commands.js";
+import { collectStats, renderStatsHeatmap } from "../../core/stats.js";
 import {
 	captureAgentCommandUsed,
 	captureOnboardingCompleted,
@@ -441,6 +442,10 @@ export class BrandSplashHeader implements Component {
 	}
 
 	render(width: number): string[] {
+		if (theme.name === "claude-midnight") {
+			return this.renderCodexHeader(width);
+		}
+
 		const safeWidth = Math.max(1, width);
 		const paddingX = safeWidth > 1 ? 1 : 0;
 		const contentWidth = Math.max(1, safeWidth - paddingX * 2);
@@ -490,6 +495,51 @@ export class BrandSplashHeader implements Component {
 			}
 		}
 
+		return lines;
+	}
+
+	private renderCodexHeader(width: number): string[] {
+		const safeWidth = Math.max(1, width);
+		const paddingX = safeWidth > 1 ? 1 : 0;
+		const contentWidth = Math.max(1, safeWidth - paddingX * 2);
+		const labelWidth = Math.min(this.labelWidth, Math.max(1, contentWidth - 1));
+		const valueWidth = Math.max(1, contentWidth - labelWidth - 1);
+		const extraMetadata = this.options.getExtraMetadata?.() ?? [];
+		const row = (label: string, value: string) => {
+			const displayValue =
+				label === "cwd" ? truncatePathMiddle(value, valueWidth) : truncateToWidth(value, valueWidth);
+			const content = truncateToWidth(
+				theme.fg("dim", label.padEnd(labelWidth)) + " " + theme.fg("muted", displayValue),
+				contentWidth,
+				"",
+			);
+			return " ".repeat(paddingX) + content + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(content)));
+		};
+		const title = truncateToWidth(theme.bold(theme.fg("text", `Prime Agent v${this.version}`)), contentWidth, "");
+		const lines = [
+			...(this.options.topPadding ? [""] : []),
+			" ".repeat(paddingX) + title + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(title))),
+			row("model", this.getModelId() ?? "—"),
+			row("cwd", formatSplashCwd(this.getCwd())),
+			...extraMetadata.map((line) => row(line.label, line.value)),
+		];
+		if (!this.options.getHideStartHint?.()) {
+			const hint = truncateToWidth(
+				theme.fg("dim", this.options.getStartHint?.() ?? "type to start"),
+				contentWidth,
+				"",
+			);
+			lines.push(" ".repeat(paddingX) + hint + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(hint))));
+		}
+		if (this.verboseInstructions) {
+			lines.push(" ".repeat(safeWidth));
+			for (const instruction of this.verboseInstructions.split("\n")) {
+				const content = truncateToWidth(instruction, contentWidth);
+				lines.push(
+					" ".repeat(paddingX) + content + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(content))),
+				);
+			}
+		}
 		return lines;
 	}
 }
@@ -928,6 +978,9 @@ export class InteractiveMode {
 	// bash_* events broadcast to every attached client, so runs correlate by
 	// runId — the runId we generate here is echoed on our run's events.
 	private sideQuestionBash: { runId: string; input: string; seedTranscript: boolean } | undefined;
+	/** Set when this client initiates a main-thread ! / !! run, so bash_end only
+	 *  triggers the shell follow-up for runs the local user performed. */
+	private ownBashFollowupPending = false;
 	// The pane-mounted component of our own side run; bash_end seeds the side
 	// transcript only when it ends this exact component.
 	private sideQuestionBashComponent: BashExecutionComponent | undefined;
@@ -4461,7 +4514,7 @@ export class InteractiveMode {
 		return imageMarkerIds(text).some((id) => this.pastedImages.has(id));
 	}
 
-	private async handleSideQuestion(question: string): Promise<void> {
+	private async handleSideQuestion(question: string, model?: AgentConnectionModel): Promise<void> {
 		if (!question) {
 			this.showWarning("Usage: /btw <question>");
 			return;
@@ -4494,11 +4547,20 @@ export class InteractiveMode {
 		this.ui.requestRender();
 
 		try {
-			await this.agentConnection.startSideQuestion(
-				event.id,
-				question,
-				previousTurns.length > 0 ? previousTurns : undefined,
-			);
+			if (model) {
+				await this.agentConnection.startSideQuestion(
+					event.id,
+					question,
+					previousTurns.length > 0 ? previousTurns : undefined,
+					model,
+				);
+			} else {
+				await this.agentConnection.startSideQuestion(
+					event.id,
+					question,
+					previousTurns.length > 0 ? previousTurns : undefined,
+				);
+			}
 		} catch (error) {
 			this.handleSideQuestionEvent({
 				...event,
@@ -4557,6 +4619,7 @@ export class InteractiveMode {
 	}
 
 	private clearSideQuestion(options: { abort?: boolean } = {}): void {
+		this.ownBashFollowupPending = false;
 		const event = this.sideQuestionEvent;
 		if (options.abort && event?.status === "running") {
 			this.abortSideQuestion(event.id);
@@ -4762,6 +4825,12 @@ export class InteractiveMode {
 					this.editor.setText("");
 					return;
 				}
+				if (commandName === "stats") {
+					this.echoLocalCommand(text);
+					await this.handleStatsCommand(commandArgs);
+					this.editor.setText("");
+					return;
+				}
 				if (commandName === "context" && !commandArgs) {
 					this.echoLocalCommand(text);
 					await this.handleContextCommand();
@@ -4937,6 +5006,7 @@ export class InteractiveMode {
 						this.sideQuestionBash = sideBash;
 					} else {
 						this.clearSideQuestion({ abort: true });
+						this.ownBashFollowupPending = true;
 					}
 					this.editor.addToHistory?.(text);
 					this.editor.setText("");
@@ -4965,6 +5035,7 @@ export class InteractiveMode {
 							// bash_end will arrive to consume the marker.
 							this.sideQuestionBashDiscarded = undefined;
 						}
+						if (!sideBash) this.ownBashFollowupPending = false;
 						this.showError(error instanceof Error ? error.message : String(error));
 					}
 					return;
@@ -5479,6 +5550,29 @@ export class InteractiveMode {
 					this.finishSideQuestionBash(event, component.getOutput());
 				}
 				this.ui.requestRender();
+				if (
+					component &&
+					this.ownBashFollowupPending &&
+					!event.cancelled &&
+					!event.errorMessage &&
+					!event.transient &&
+					this.settingsManager.getShellFollowupEnabled() &&
+					!this.activeSideQuestionId
+				) {
+					this.ownBashFollowupPending = false;
+					const output = truncateTail(component.getOutput()).content;
+					const command = component.getCommand();
+					const modelKey = this.settingsManager.getShellFollowupModel();
+					const model = modelKey
+						? this.getCachedModelCandidates().find(
+								(candidate) => `${candidate.provider}/${candidate.id}` === modelKey,
+							)
+						: undefined;
+					void this.handleSideQuestion(
+						`The user ran the command: ${command}\n\nOutput:\n${output}\n\nProvide a very brief follow-up (1-3 sentences) grounded in the current conversation and this output. Do not use tools.`,
+						model,
+					).catch(() => {});
+				}
 				break;
 			}
 
@@ -7526,6 +7620,8 @@ export class InteractiveMode {
 					showTerminalProgress: this.settingsManager.getShowTerminalProgress(),
 					fullscreen: this.fullscreenEnabled,
 					warnings: this.settingsManager.getWarnings(),
+					shellFollowupEnabled: this.settingsManager.getShellFollowupEnabled(),
+					shellFollowupModel: this.settingsManager.getShellFollowupModel(),
 				},
 				{
 					onAutoCompactChange: (enabled) => {
@@ -7653,6 +7749,8 @@ export class InteractiveMode {
 					onWarningsChange: (warnings) => {
 						this.settingsManager.setWarnings(warnings);
 					},
+					onShellFollowupEnabledChange: (enabled) => this.settingsManager.setShellFollowupEnabled(enabled),
+					onShellFollowupModelChange: (model) => this.settingsManager.setShellFollowupModel(model),
 					onCancel: () => {
 						done();
 						this.ui.requestRender();
@@ -9481,6 +9579,25 @@ export class InteractiveMode {
 		}
 
 		this.showWarning("Usage: /traces [status|on|off|preview|upload|upload-current|upload-all|login]");
+	}
+
+	private async handleStatsCommand(args = ""): Promise<void> {
+		const result = collectStats();
+		if (args === "--json" || args === "-m json") {
+			this.chatContainer.addChild(new Text(JSON.stringify(result), 1, 0));
+			this.ui.requestRender();
+			return;
+		}
+		const colors = theme;
+		let info = `${colors.bold("Stats")}\n\n${renderStatsHeatmap(result, (level, value) => colors.fg(level === 0 ? "dim" : level === 1 ? "muted" : level === 2 ? "warning" : "success", value))}\n\n`;
+		info += `${colors.bold("Tokens")}  in ${result.totals.input.toLocaleString()}  out ${result.totals.output.toLocaleString()}  cache-read ${result.totals.cacheRead.toLocaleString()}  cache-write ${result.totals.cacheWrite.toLocaleString()}\n`;
+		info += `${colors.bold("Cost")} $${result.totals.cost.toFixed(4)}  (${result.sessionsScanned} sessions${result.skipped ? `, ${result.skipped} skipped` : ""})\n\n${colors.bold("Learning path")}\n`;
+		info += result.learning.length
+			? result.learning.map((entry) => `• ${entry.title} (${entry.scope})`).join("\n")
+			: colors.fg("dim", "No harness memories or refinements found.");
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(info, 1, 0));
+		this.ui.requestRender();
 	}
 
 	private async handleContextCommand(): Promise<void> {

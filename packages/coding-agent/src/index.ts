@@ -125,6 +125,7 @@ export type {
 } from "./core/extensions/index.js";
 export {
 	createExtensionRuntime,
+	createTodoExtension,
 	defineTool,
 	discoverAndLoadExtensions,
 	ExtensionRunner,

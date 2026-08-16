@@ -46,6 +46,40 @@ describe("DefaultResourceLoader", () => {
 			expect(loader.getThemes().themes).toEqual([]);
 		});
 
+		it("should always load the built-in todo extension, including with noExtensions", async () => {
+			const loader = new DefaultResourceLoader({ cwd, agentDir, noExtensions: true });
+			await loader.reload();
+
+			const extensions = loader.getExtensions().extensions;
+			expect(extensions).toHaveLength(1);
+			expect(extensions[0]?.tools.has("todo")).toBe(true);
+			expect(extensions[0]?.commands.has("todos")).toBe(true);
+		});
+
+		it("should not duplicate built-in todo registrations when the legacy example is loaded", async () => {
+			const loader = new DefaultResourceLoader({
+				cwd,
+				agentDir,
+				additionalExtensionPaths: [join(process.cwd(), "examples", "extensions", "todo.ts")],
+			});
+			await loader.reload();
+
+			const extensionsResult = loader.getExtensions();
+			const sessionManager = SessionManager.inMemory();
+			const authStorage = AuthStorage.create(join(tempDir, "auth-todo.json"));
+			const modelRegistry = ModelRegistry.create(authStorage);
+			const runner = new ExtensionRunner(
+				extensionsResult.extensions,
+				extensionsResult.runtime,
+				cwd,
+				sessionManager,
+				modelRegistry,
+			);
+
+			expect(runner.getAllRegisteredTools().filter((tool) => tool.definition.name === "todo")).toHaveLength(1);
+			expect(runner.getRegisteredCommands().filter((command) => command.name === "todos")).toHaveLength(1);
+		});
+
 		it("should discover skills from agentDir", async () => {
 			const skillsDir = join(agentDir, "skills");
 			mkdirSync(skillsDir, { recursive: true });
@@ -186,12 +220,14 @@ Project skill`,
 			await loader.reload();
 
 			const extensionsResult = loader.getExtensions();
-			expect(extensionsResult.extensions).toHaveLength(1);
+			// One shared extension plus the always-present built-in todo extension.
+			expect(extensionsResult.extensions).toHaveLength(2);
 			expect(extensionsResult.errors).toEqual([]);
 
 			// mergePaths processes project paths before user paths, so the project
 			// alias is the canonical survivor.
 			expect(extensionsResult.extensions[0].path).toBe(join(cwd, ".prime", "agent", "extensions", "shared.ts"));
+			expect(extensionsResult.extensions[1]?.path).toBe("<inline:1>");
 		});
 
 		it("should keep both extensions loaded when command names collide", async () => {
@@ -232,7 +268,8 @@ Project skill`,
 			await loader.reload();
 
 			const extensionsResult = loader.getExtensions();
-			expect(extensionsResult.extensions).toHaveLength(2);
+			// Two user extensions plus the always-present built-in todo extension.
+			expect(extensionsResult.extensions).toHaveLength(3);
 			expect(extensionsResult.errors.some((e) => e.error.includes('Command "/deploy" conflicts'))).toBe(false);
 
 			const sessionManager = SessionManager.inMemory();
@@ -257,6 +294,7 @@ Project skill`,
 				"project-only",
 				"deploy:2",
 				"user-only",
+				"todos",
 			]);
 		});
 

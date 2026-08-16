@@ -60,8 +60,9 @@ export const DAEMON_COMMAND_ENVELOPE_MIN_PROTOCOL_VERSION = 7;
 // Revision 14 carries the client's monotonic telemetry opt-out on attach and reattach.
 // Revision 15 adds the mutate_queued_message command and queue_message_mutation capability.
 // Revision 16 adds the "stopping" workerState and stops reporting disconnected workers as "ready".
-export const DAEMON_SCHEMA_REVISION = 16;
-export const DAEMON_SCHEMA_ID = "protocol-7-schema-16-1bcb9e7f1a49";
+// Revision 17 adds capability-gated side-question model overrides.
+export const DAEMON_SCHEMA_REVISION = 17;
+export const DAEMON_SCHEMA_ID = "protocol-7-schema-17-9f6a7c493463";
 
 export type DaemonProtocolName = typeof DAEMON_PROTOCOL_NAME;
 export type DaemonProtocolVersion = number;
@@ -93,6 +94,7 @@ export type DaemonServerCapability =
 	// The daemon honors previousTurns on start_side_question (multi-turn side
 	// conversations). Clients must check before sending follow-up transcripts.
 	| "side_question_transcript"
+	| "side_question_model"
 	// The daemon honors transient and runId on execute_bash (side-conversation
 	// bash: never recorded into the session, and its bash_start/bash_end events
 	// carry the transient marker and echoed runId so clients correlate runs by
@@ -135,6 +137,7 @@ export const DAEMON_DEFAULT_SERVER_CAPABILITIES: readonly DaemonServerCapability
 	"heartbeat_management",
 	"model_catalog",
 	"side_question_transcript",
+	"side_question_model",
 	"transient_bash",
 	"session_input_admission",
 	"prompt_admission_cancellation",
@@ -486,6 +489,7 @@ export type DaemonCommand =
 			sideQuestionId: string;
 			question: string;
 			previousTurns?: AgentConnectionSideQuestionTurn[];
+			model?: { provider: string; id: string };
 	  }
 	| { id?: string; type: "abort_side_question"; activeSessionId: string; sideQuestionId: string }
 	| {

@@ -10,6 +10,7 @@ import { AuthStorage } from "./auth-storage.js";
 import type { AgentAutonomousConfig } from "./autonomous.js";
 import type { AgentRlmHeartbeatController } from "./cron-jobs.js";
 import { createHerdrAgentStateExtension } from "./extensions/builtin/herdr-agent-state.js";
+import { planBuildOrchestrateExtension } from "./extensions/builtin/plan-build-orchestrate.js";
 import type { SessionStartEvent, ToolDefinition } from "./extensions/index.js";
 import { McpManager } from "./mcp/mcp-manager.js";
 import { ModelRegistry } from "./model-registry.js";
@@ -201,9 +202,14 @@ export async function createAgentSessionServices(
 	// noExtensions is a full opt-out: it disables the built-in reporter too,
 	// not just discovered extension files.
 	const skipHerdrReporter = options.noBuiltinHerdrReporter || options.resourceLoaderOptions?.noExtensions;
-	const builtinExtensionFactories = skipHerdrReporter
+	const builtinExtensionFactories = options.resourceLoaderOptions?.noExtensions
 		? []
-		: [createHerdrAgentStateExtension(() => resourceLoader.getLoadedExtensionPaths())];
+		: [
+				planBuildOrchestrateExtension,
+				...(skipHerdrReporter
+					? []
+					: [createHerdrAgentStateExtension(() => resourceLoader.getLoadedExtensionPaths())]),
+			];
 	const resourceLoader: DefaultResourceLoader = new DefaultResourceLoader({
 		...(options.resourceLoaderOptions ?? {}),
 		extensionFactories: [...builtinExtensionFactories, ...userExtensionFactories],

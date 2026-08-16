@@ -55,6 +55,8 @@ export interface SettingsConfig {
 	showTerminalProgress: boolean;
 	fullscreen: boolean;
 	warnings: WarningSettings;
+	shellFollowupEnabled: boolean;
+	shellFollowupModel: string;
 }
 
 export interface SettingsCallbacks {
@@ -81,6 +83,8 @@ export interface SettingsCallbacks {
 	onShowTerminalProgressChange: (enabled: boolean) => void;
 	onFullscreenChange: (enabled: boolean) => void;
 	onWarningsChange: (warnings: WarningSettings) => void;
+	onShellFollowupEnabledChange?: (enabled: boolean) => void;
+	onShellFollowupModelChange?: (model: string) => void;
 	onCancel: () => void;
 }
 
@@ -210,6 +214,13 @@ export class SettingsSelectorComponent extends Container {
 		}
 
 		const items: SettingItem[] = [
+			{
+				id: "shell-followup",
+				label: "Shell follow-up",
+				description: "Ask the model for a brief comment after user shell commands",
+				currentValue: config.shellFollowupEnabled ? "true" : "false",
+				values: ["true", "false"],
+			},
 			{
 				id: "autocompact",
 				label: "Auto-compact",
@@ -452,6 +463,9 @@ export class SettingsSelectorComponent extends Container {
 			getSettingsListTheme(),
 			(id, newValue) => {
 				switch (id) {
+					case "shell-followup":
+						callbacks.onShellFollowupEnabledChange?.(newValue === "true");
+						break;
 					case "autocompact":
 						callbacks.onAutoCompactChange(newValue === "true");
 						break;

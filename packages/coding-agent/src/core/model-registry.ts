@@ -29,6 +29,7 @@ import type { Validator } from "typebox/compile";
 import type { TLocalizedValidationError } from "typebox/error";
 import { getAgentDir } from "../config.js";
 import type { AuthSourceToken, AuthStatus, AuthStorage } from "./auth-storage.js";
+import { isCustomModelApi, normalizeCustomModelEndpoint } from "./custom-models.js";
 import { PRIME_INFERENCE_PROVIDER_ID } from "./prime-inference-auth.js";
 import {
 	fetchAuthorizedPrivatePrimeInferenceModelIds,
@@ -191,6 +192,10 @@ const ModelOverrideSchema = Type.Object({
 type ModelOverride = Static<typeof ModelOverrideSchema>;
 
 const ProviderConfigSchema = Type.Object({
+	/** Schema revision for custom-provider records. */
+	version: Type.Optional(Type.Literal(1)),
+	/** Explicit opt-in for a localhost development server. */
+	allowHttpLoopback: Type.Optional(Type.Boolean()),
 	name: Type.Optional(Type.String({ minLength: 1 })),
 	baseUrl: Type.Optional(Type.String({ minLength: 1 })),
 	apiKey: Type.Optional(Type.String({ minLength: 1 })),
@@ -676,6 +681,13 @@ export class ModelRegistry {
 
 		for (const [providerName, providerConfig] of Object.entries(config.providers)) {
 			const isBuiltIn = builtInProviders.has(providerName);
+			if (providerConfig.baseUrl)
+				normalizeCustomModelEndpoint(providerConfig.baseUrl, {
+					allowHttpLoopback: providerConfig.allowHttpLoopback,
+				});
+			if (providerConfig.api && !isBuiltIn && !isCustomModelApi(providerConfig.api)) {
+				throw new Error(`Provider ${providerName}: unsupported API family "${providerConfig.api}".`);
+			}
 			const hasProviderApi = !!providerConfig.api;
 			const models = providerConfig.models ?? [];
 			const hasModelOverrides =
@@ -693,14 +705,19 @@ export class ModelRegistry {
 				if (!providerConfig.baseUrl) {
 					throw new Error(`Provider ${providerName}: "baseUrl" is required when defining custom models.`);
 				}
-				if (!providerConfig.apiKey) {
-					throw new Error(`Provider ${providerName}: "apiKey" is required when defining custom models.`);
-				}
+				// Credentials may instead be stored in AuthStorage under the provider ID.
 			}
 			// Built-in providers with custom models: baseUrl/apiKey/api are optional,
 			// inherited from built-in models. Auth comes from env vars / auth storage.
 
 			for (const modelDef of models) {
+				if (modelDef.baseUrl)
+					normalizeCustomModelEndpoint(modelDef.baseUrl, { allowHttpLoopback: providerConfig.allowHttpLoopback });
+				if (modelDef.api && !isCustomModelApi(modelDef.api)) {
+					throw new Error(
+						`Provider ${providerName}, model ${modelDef.id}: unsupported API family "${modelDef.api}".`,
+					);
+				}
 				const hasModelApi = !!modelDef.api;
 
 				if (!hasProviderApi && !hasModelApi && !isBuiltIn) {
@@ -1032,6 +1049,37 @@ export class ModelRegistry {
 			}
 			return availableModels.filter((model) => model.provider !== "openai-codex");
 		}
+	}
+
+	/** Discover OpenAI-compatible model IDs. Discovery is explicit, bounded, and never persisted automatically. */
+	async discoverModels(
+		provider: string,
+		options: { signal?: AbortSignal; timeoutMs?: number; limit?: number } = {},
+	): Promise<string[]> {
+		const model = this.models.find((candidate) => candidate.provider === provider);
+		if (!model) throw new Error(`Unknown provider "${provider}".`);
+		if (model.api !== "openai-completions" && model.api !== "openai-responses") {
+			throw new Error(`Provider "${provider}" does not support automatic model discovery. Add model IDs manually.`);
+		}
+		const auth = await this.getApiKeyAndHeaders(model);
+		if (!auth.ok) throw new Error(auth.error);
+		const url = new URL("models", `${model.baseUrl.replace(/\/+$/, "")}/`);
+		const response = await fetch(url, {
+			headers: { ...auth.headers, ...(auth.apiKey ? { Authorization: `Bearer ${auth.apiKey}` } : {}) },
+			signal: options.signal ?? AbortSignal.timeout(options.timeoutMs ?? 5_000),
+			redirect: "error",
+		});
+		if (!response.ok) throw new Error(`Model discovery failed with HTTP ${response.status}.`);
+		const body = (await response.json()) as { data?: Array<{ id?: unknown }> };
+		if (!Array.isArray(body.data)) throw new Error("Model discovery returned an invalid catalog.");
+		const limit = Math.min(Math.max(options.limit ?? 200, 1), 500);
+		return [
+			...new Set(
+				body.data.flatMap((entry) => (typeof entry?.id === "string" && entry.id.trim() ? [entry.id.trim()] : [])),
+			),
+		]
+			.sort((a, b) => a.localeCompare(b))
+			.slice(0, limit);
 	}
 
 	/**

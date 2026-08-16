@@ -125,6 +125,9 @@ describe("ConfigurationMenuComponent", () => {
 		menu.handleInput("f");
 		expect(menu.getSearchValue("models")).toBe("f");
 		menu.handleInput("\t");
+		expect(menu.getActiveTab()).toBe("custom-models");
+		expect(menu.getSearchValue("models")).toBe("f");
+		menu.handleInput("\t");
 		expect(menu.getActiveTab()).toBe("mcp-connections");
 		expect(menu.getSearchValue("models")).toBe("f");
 		menu.handleInput("\t");
@@ -132,6 +135,8 @@ describe("ConfigurationMenuComponent", () => {
 
 		menu.handleInput("\x1b[Z");
 		expect(menu.getActiveTab()).toBe("mcp-connections");
+		menu.handleInput("\x1b[Z");
+		expect(menu.getActiveTab()).toBe("custom-models");
 		menu.handleInput("\x1b[Z");
 		expect(menu.getActiveTab()).toBe("models");
 		expect(menu.getSearchValue("models")).toBe("f");

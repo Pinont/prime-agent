@@ -275,6 +275,20 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("shellFollowup", () => {
+		it("persists enabled and model settings across manager instances", async () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			manager.setShellFollowupEnabled(true);
+			manager.setShellFollowupModel("openai/gpt-5.1");
+			await manager.flush();
+			expect(manager.getShellFollowupEnabled()).toBe(true);
+			expect(manager.getShellFollowupModel()).toBe("openai/gpt-5.1");
+			const reloaded = SettingsManager.create(projectDir, agentDir);
+			expect(reloaded.getShellFollowupEnabled()).toBe(true);
+			expect(reloaded.getShellFollowupModel()).toBe("openai/gpt-5.1");
+		});
+	});
+
 	describe("recentModels", () => {
 		it("records most-recently-used first, dedupes, and persists", async () => {
 			const manager = SettingsManager.create(projectDir, agentDir);

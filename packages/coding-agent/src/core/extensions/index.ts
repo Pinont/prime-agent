@@ -10,6 +10,9 @@ export {
 	hasFileBasedHerdrIntegration,
 	herdrAgentStateExtension,
 } from "./builtin/herdr-agent-state.js";
+export { planBuildOrchestrateExtension } from "./builtin/plan-build-orchestrate.js";
+export type { Todo, TodoDetails } from "./builtin/todo.js";
+export { createTodoExtension } from "./builtin/todo.js";
 export {
 	createExtensionRuntime,
 	discoverAndLoadExtensions,

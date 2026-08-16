@@ -857,7 +857,11 @@ export class DaemonAgentConnection implements AgentConnection {
 		id: string,
 		question: string,
 		previousTurns?: AgentConnectionSideQuestionTurn[],
+		model?: AgentConnectionModel,
 	): Promise<void> {
+		if (model && !this.client.supportsServerCapability("side_question_model")) {
+			throw new Error("the daemon is running an older build without side-question model overrides");
+		}
 		if (previousTurns?.length && !this.client.supportsServerCapability("side_question_transcript")) {
 			// An older daemon would silently ignore previousTurns and answer the
 			// follow-up without the side-conversation context; fail loudly instead.
@@ -873,6 +877,7 @@ export class DaemonAgentConnection implements AgentConnection {
 				sideQuestionId: id,
 				question,
 				previousTurns,
+				model: model ? { provider: model.provider, id: model.id } : undefined,
 			});
 		} catch (error) {
 			this.activeSideQuestionIds.delete(id);

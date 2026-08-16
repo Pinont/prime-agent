@@ -157,6 +157,7 @@ Type `/` in the editor to trigger commands. [Extensions](#extensions) can regist
 | `/traces [status\|on\|off\|preview\|upload-current\|upload-all\|login]` | Preview traces, run one-shot current/all uploads, and manage automatic sharing (`upload` aliases `upload-current`) |
 | `/usage` | Show token, cost, and context usage |
 | `/tree` | Jump to any point in the session and continue from there |
+| `/todos` | Display the session-persistent todo list for the current branch |
 | `/fork` | Create a new session from a previous user message |
 | `/clone` | Duplicate the current active branch into a new session |
 | `/compact [prompt]` | Manually compact context, optional custom instructions |

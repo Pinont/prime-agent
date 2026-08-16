@@ -2455,7 +2455,7 @@ describe("InteractiveMode model selection persistence", () => {
 		expect(getSelector().render(120).join("\n")).toContain("catalog");
 		expect(getAvailableModels).not.toHaveBeenCalled();
 		getSelector().handleInput("\t");
-		expect(getSelector().getActiveTab()).toBe("mcp-connections");
+		expect(getSelector().getActiveTab()).toBe("custom-models");
 
 		getSelector().handleInput("\x1b");
 		await expect(result).resolves.toBeUndefined();

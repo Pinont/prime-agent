@@ -472,3 +472,27 @@ Vercel AI Gateway example:
   }
 }
 ```
+
+
+## Custom endpoints and task profiles
+
+Custom models continue to use the normal model registry and selector. Add endpoint metadata to `~/.prime/agent/models.json`; store the secret through `/login` or `auth.json` under the same provider ID, never in a project file:
+
+```json
+{
+  "providers": {
+    "local": {
+      "version": 1,
+      "baseUrl": "http://localhost:11434/v1",
+      "api": "openai-completions",
+      "models": [{ "id": "my-model", "contextWindow": 128000, "maxTokens": 8192 }]
+    }
+  }
+}
+```
+
+Supported custom API families are `openai-completions`, `openai-responses`, and `anthropic-messages`. HTTPS is required except for explicit loopback development endpoints. URLs cannot contain credentials or secret query parameters. `/model local/my-model` selects an imported model as usual.
+
+Task profiles are optional global settings. `modelRoles.plan`, `modelRoles.build`, and `modelRoles.delegate` contain a canonical `provider/model` key and a source (`builtin`, `custom`, or `imported`). An unset role inherits the session model. A configured role that lacks a model or credential fails before task creation; it never silently falls back. Profile resolution is pinned for each task, so changing a profile does not alter an in-flight request.
+
+OpenAI-compatible endpoints can be explicitly discovered through the registry's `/models` endpoint; discovery is bounded, cancellable, and does not automatically persist results. Providers without a compatible catalog require manual model IDs.

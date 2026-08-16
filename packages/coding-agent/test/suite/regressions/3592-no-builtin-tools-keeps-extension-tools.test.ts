@@ -78,8 +78,8 @@ describe("regression #3592: no-builtin-tools keeps extension tools enabled", () 
 				.getAllTools()
 				.map((tool) => tool.name)
 				.sort(),
-		).toEqual(["extension_tool", "ipython"]);
-		expect(session.getActiveToolNames()).toEqual(["extension_tool"]);
+		).toEqual(["extension_tool", "ipython", "todo"]);
+		expect(session.getActiveToolNames().sort()).toEqual(["extension_tool", "todo"]);
 		expect(session.systemPrompt).not.toContain("- extension_tool: Run extension test behavior");
 		expect(session.systemPrompt).not.toContain("- ipython:");
 		expect(session.systemPrompt).not.toContain("- bash:");
@@ -112,7 +112,9 @@ describe("regression #3592: no-builtin-tools keeps extension tools enabled", () 
 			noTools: "builtin",
 		});
 
-		expect(session.getActiveToolNames()).toEqual([]);
+		// Built-in extensions (todo, plan-build-orchestrate) remain available;
+		// the default built-in tool (ipython) and the sample extension are gone.
+		expect(session.getActiveToolNames().sort()).toEqual(["ask_user", "submit_plan", "todo"]);
 		expect(session.systemPrompt).not.toContain("Available tools:");
 		expect(session.systemPrompt).not.toContain("- ipython:");
 		session.dispose();

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Removed automatic clipboard copying when selecting text with the mouse in fullscreen mode; use the explicit copy action instead.
+
 - Fixed hyperlinks not being clickable in fullscreen mode on terminals that gate native link handling while mouse reporting is active (e.g. Ghostty); left-clicking a link now opens it directly.
 
 ## [0.7.2] - 2026-08-11

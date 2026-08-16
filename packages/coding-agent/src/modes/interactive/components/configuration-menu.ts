@@ -10,13 +10,15 @@ import {
 } from "@earendil-works/pi-tui";
 import type { AuthStorage } from "../../../core/auth-storage.js";
 import type { ModelRegistry } from "../../../core/model-registry.js";
+import type { ModelRoleSettings } from "../../../core/settings-manager.js";
 import { theme } from "../theme/theme.js";
+import { CustomModelsComponent } from "./custom-models.js";
 import { keyText } from "./keybinding-hints.js";
 import { getMenuPanelInnerWidth } from "./menu-panel.js";
 import { ModelSelectorComponent } from "./model-selector.js";
 import { type AuthSelectorProvider, OAuthSelectorComponent } from "./oauth-selector.js";
 
-export const CONFIGURATION_MENU_TABS = ["providers", "models", "mcp-connections"] as const;
+export const CONFIGURATION_MENU_TABS = ["providers", "models", "custom-models", "mcp-connections"] as const;
 
 export type ConfigurationMenuTab = (typeof CONFIGURATION_MENU_TABS)[number];
 
@@ -42,12 +44,16 @@ export interface ConfigurationMenuOptions {
 	onSelectProvider: (provider: AuthSelectorProvider) => void;
 	onSelectMcpConnection: (provider: AuthSelectorProvider) => void;
 	onSelectModel: (model: Model<Api>) => void;
+	modelRoles?: ModelRoleSettings;
+	onModelRolesChanged?: (roles: ModelRoleSettings) => void;
+	onDiscoverModels?: (provider: string) => Promise<string[]>;
 	onCancel: () => void;
 }
 
 const TAB_LABELS: Record<ConfigurationMenuTab, string> = {
 	providers: "Providers",
 	models: "Models",
+	"custom-models": "Custom Models",
 	"mcp-connections": "MCP Connections",
 };
 
@@ -106,6 +112,7 @@ export class ConfigurationMenuComponent extends Container implements Focusable {
 	private readonly bodies: {
 		providers: OAuthSelectorComponent;
 		models: ModelSelectorComponent;
+		"custom-models": CustomModelsComponent;
 		"mcp-connections": OAuthSelectorComponent;
 	};
 	private activeTab: ConfigurationMenuTab;
@@ -155,6 +162,15 @@ export class ConfigurationMenuComponent extends Container implements Focusable {
 				recentModels: options.recentModels,
 			},
 		);
+		const customModels = new CustomModelsComponent({
+			modelRegistry: options.modelRegistry,
+			models: options.availableModels,
+			roles: options.modelRoles ?? {},
+			onRolesChanged: options.onModelRolesChanged ?? (() => undefined),
+			onDiscover: options.onDiscoverModels,
+			onCancel: options.onCancel,
+		});
+
 		const mcpConnections = new OAuthSelectorComponent(
 			"login",
 			options.authStorage,
@@ -175,6 +191,7 @@ export class ConfigurationMenuComponent extends Container implements Focusable {
 		this.bodies = {
 			providers,
 			models,
+			"custom-models": customModels,
 			"mcp-connections": mcpConnections,
 		};
 		this.addChild(this.activeBody);
@@ -199,6 +216,7 @@ export class ConfigurationMenuComponent extends Container implements Focusable {
 	}
 
 	getSearchValue(tab: ConfigurationMenuTab = this.activeTab): string {
+		if (tab === "custom-models") return "";
 		return this.bodies[tab].getSearchInput().getValue();
 	}
 
@@ -240,13 +258,13 @@ export class ConfigurationMenuComponent extends Container implements Focusable {
 			this.activeTab === "models" &&
 			(kb.matches(keyData, "tui.editor.cursorLeft") || kb.matches(keyData, "tui.editor.cursorRight"))
 		) {
-			this.activeBody.getSearchInput().handleInput(keyData);
+			(this.bodies.models as ModelSelectorComponent).getSearchInput().handleInput(keyData);
 			return;
 		}
 		this.activeBody.handleInput(keyData);
 	}
 
-	private get activeBody(): OAuthSelectorComponent | ModelSelectorComponent {
+	private get activeBody(): OAuthSelectorComponent | ModelSelectorComponent | CustomModelsComponent {
 		return this.bodies[this.activeTab];
 	}
 

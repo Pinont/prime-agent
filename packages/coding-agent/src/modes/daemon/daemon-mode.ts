@@ -4260,6 +4260,16 @@ export class AgentDaemon {
 						}
 					},
 					command.previousTurns,
+					command.model
+						? (() => {
+								const model = state.runtime.session.modelRegistry.find(
+									command.model!.provider,
+									command.model!.id,
+								);
+								if (!model) throw new Error(`Model not found: ${command.model!.provider}/${command.model!.id}`);
+								return model;
+							})()
+						: undefined,
 				);
 				this.sideQuestionRuns.set(command.sideQuestionId, {
 					run,

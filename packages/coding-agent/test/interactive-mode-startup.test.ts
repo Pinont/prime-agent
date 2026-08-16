@@ -9,6 +9,7 @@ import {
 	START_HINTS,
 } from "../src/modes/interactive/interactive-mode.js";
 import { getMarkdownTheme, initTheme } from "../src/modes/interactive/theme/theme.js";
+import { PRIME_BUTTERFLY_LOGO } from "../src/themes/prime-logo.js";
 
 describe("InteractiveMode startup hints", () => {
 	beforeAll(() => {
@@ -63,6 +64,26 @@ describe("InteractiveMode startup hints", () => {
 			() => "/tmp/project",
 		);
 		expect(unpadded.render(120)[0]).not.toBe("");
+	});
+
+	it("uses a Codex-style header only for the claude-midnight theme", () => {
+		initTheme("claude-midnight");
+		const header = new BrandSplashHeader(
+			"0.0.0",
+			() => "provider/very-long-model-name",
+			() => "/very/long/project/path/with/a/final-directory",
+		);
+
+		const output = stripAnsi(header.render(40).join("\n"));
+		expect(output).toContain("Prime Agent v0.0.0");
+		expect(output).toContain("model");
+		expect(output).toContain("cwd");
+		expect(output).not.toContain("version");
+		expect(output).not.toContain(PRIME_BUTTERFLY_LOGO.split("\n")[0]!.trim());
+		expect(header.render(12)).toHaveLength(4);
+		expect(header.render(12).every((line) => stripAnsi(line).length <= 12)).toBe(true);
+
+		initTheme("dark");
 	});
 
 	it("randomly selects from five concise filepath prompts", () => {

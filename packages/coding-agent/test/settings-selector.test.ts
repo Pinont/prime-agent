@@ -32,6 +32,8 @@ const config: SettingsConfig = {
 	clearOnShrink: false,
 	showTerminalProgress: false,
 	fullscreen: true,
+	shellFollowupEnabled: false,
+	shellFollowupModel: "",
 	warnings: {},
 };
 

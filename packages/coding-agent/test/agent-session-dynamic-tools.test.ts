@@ -73,11 +73,11 @@ describe("AgentSession dynamic tool registration", () => {
 
 		expect(allTools.map((tool) => tool.name)).toContain("dynamic_tool");
 		expect(dynamicTool?.sourceInfo).toMatchObject({
-			path: "<inline:1>",
 			source: "inline",
 			scope: "temporary",
 			origin: "top-level",
 		});
+		expect(dynamicTool?.sourceInfo.path).toMatch(/^<inline:\d+>$/);
 		expect(ipythonTool?.sourceInfo).toMatchObject({
 			path: "<builtin:ipython>",
 			source: "builtin",

@@ -1,5 +1,5 @@
 import { Agent, type AgentMessage } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, UserMessage } from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Model, UserMessage } from "@earendil-works/pi-ai";
 
 export type SideQuestionStatus = "running" | "complete" | "cancelled" | "error";
 
@@ -45,8 +45,9 @@ export function startSideQuestion(
 	question: string,
 	onEvent: (event: SideQuestionEvent) => void | Promise<void>,
 	previousTurns: SideQuestionTurn[] = [],
+	modelOverride?: Model<Api>,
 ): SideQuestionRun {
-	const model = parent.state.model;
+	const model = modelOverride ?? parent.state.model;
 	if (!model) {
 		throw new Error("Select a model before asking a side question");
 	}

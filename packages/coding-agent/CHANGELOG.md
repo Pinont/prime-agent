@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Added built-in PLAN/BUILD workflow modes with read-only planning enforcement, user questions, submitted plan artifacts, and approval before builds.
+- Added the `claude-midnight` theme with a midnight-blue Claude-inspired palette and a theme-specific Codex-style startup header.
+- Added a built-in todo tool with `/todos` support and session-persistent task tracking.
 - Fixed fullscreen wheel scrolling in Ghostty while retaining application link clicks; set `terminal.fullscreenMouse` to `false` to use native Cmd-click instead.
 - Changed the agents view to sort idle and inactive sessions by last message time, newest first, while keeping running agents in stable creation order.
 - Fixed `openai-codex` models being invisible to `rlm` subagents and `find_models` because model discovery reported Prime Agent's own version as the Codex client version ([#1375](https://github.com/PrimeIntellect-ai/prime-agent/pull/1375) by [@bilelrais](https://github.com/bilelrais)).

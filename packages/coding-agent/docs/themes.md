@@ -18,7 +18,7 @@ Themes are JSON files that define colors for the TUI.
 
 Prime Agent loads themes from:
 
-- Built-in: `dark`, `light`
+- Built-in: `prime`, `dark`, `light`, `claude-midnight`
 - Global: `~/.prime/agent/themes/*.json`
 - Project: `.prime/agent/themes/*.json`
 - Packages: `themes/` directories or `pi.themes` entries in `package.json`
@@ -37,7 +37,9 @@ Select a theme via `/settings` or in `settings.json`:
 }
 ```
 
-On first run, Prime Agent detects your terminal background and defaults to `dark` or `light`.
+On first run, Prime Agent detects your terminal background and defaults to `prime` or `light`.
+
+`claude-midnight` is a midnight-blue built-in theme with blue-gray surfaces, off-white text, terracotta thinking/status emphasis, and green, amber, and red state colors. When selected, it also uses the compact Codex-style startup header with the Prime Agent version, active model, and current directory.
 
 ## Creating a Custom Theme
 
@@ -79,6 +81,8 @@ vim ~/.prime/agent/themes/my-theme.json
     "toolPendingBg": "#1e1e2e",
     "toolSuccessBg": "#1e2e1e",
     "toolErrorBg": "#2e1e1e",
+    "toolDiffAddedBg": "#1e3a26",
+    "toolDiffRemovedBg": "#3a1e24",
     "toolPanelBg": "#2d2d38",
     "toolTitle": "primary",
     "toolOutput": "",
@@ -94,6 +98,7 @@ vim ~/.prime/agent/themes/my-theme.json
     "mdListBullet": "#00ffff",
     "toolDiffAdded": "#00ff00",
     "toolDiffRemoved": "#ff0000",
+    "toolDiffText": "#f0f0f0",
     "toolDiffContext": "secondary",
     "syntaxComment": "secondary",
     "syntaxKeyword": "primary",
@@ -140,13 +145,13 @@ vim ~/.prime/agent/themes/my-theme.json
 
 - `name` is required and must be unique.
 - `vars` is optional. Define reusable colors here, then reference them in `colors`.
-- `colors` must define all 51 required tokens.
+- `colors` must define all 55 required tokens.
 
 The `$schema` field enables editor auto-completion and validation.
 
 ## Color Tokens
 
-Every theme must define all 51 color tokens. There are no optional colors.
+Every theme must define all 55 color tokens. There are no optional colors.
 
 ### Core UI (11 colors)
 
@@ -164,7 +169,7 @@ Every theme must define all 51 color tokens. There are no optional colors.
 | `text` | Default text (usually `""`) |
 | `thinkingText` | Thinking block text |
 
-### Backgrounds & Content (12 colors)
+### Backgrounds & Content (14 colors)
 
 | Token | Purpose |
 |-------|---------|
@@ -177,6 +182,8 @@ Every theme must define all 51 color tokens. There are no optional colors.
 | `toolPendingBg` | Tool box (pending) |
 | `toolSuccessBg` | Tool box (success) |
 | `toolErrorBg` | Tool box (error) |
+| `toolDiffAddedBg` | Added diff line background |
+| `toolDiffRemovedBg` | Removed diff line background |
 | `toolPanelBg` | Tool panel background |
 | `toolTitle` | Tool title |
 | `toolOutput` | Tool output text |
@@ -196,12 +203,13 @@ Every theme must define all 51 color tokens. There are no optional colors.
 | `mdHr` | Horizontal rule |
 | `mdListBullet` | List bullets |
 
-### Tool Diffs (3 colors)
+### Tool Diffs (4 colors)
 
 | Token | Purpose |
 |-------|---------|
 | `toolDiffAdded` | Added lines |
 | `toolDiffRemoved` | Removed lines |
+| `toolDiffText` | Text on added and removed line backgrounds |
 | `toolDiffContext` | Context lines |
 
 ### Syntax Highlighting (9 colors)
@@ -295,3 +303,4 @@ echo $COLORTERM  # Should output "truecolor" or "24bit"
 See the built-in themes:
 - [dark.json](../src/modes/interactive/theme/dark.json)
 - [light.json](../src/modes/interactive/theme/light.json)
+- [claude-midnight.json](../src/modes/interactive/theme/claude-midnight.json)

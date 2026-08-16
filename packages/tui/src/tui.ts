@@ -790,16 +790,6 @@ export class TUI extends Container {
 		execFile(command, args, () => {});
 	}
 
-	private copySelection(text: string): void {
-		if (this.onCopy) {
-			this.onCopy(text);
-			return;
-		}
-		// fallback: OSC 52 works locally, over SSH, and through tmux (set-clipboard)
-		const base64 = Buffer.from(text, "utf8").toString("base64");
-		this.terminal.write(`\x1b]52;c;${base64}\x07`);
-	}
-
 	private updateSelectionAutoScroll(viewport: FullscreenViewport, screenRow: number, screenColumn: number): void {
 		const direction = viewport.selectionAutoScrollDirection(screenRow);
 		this.selectionAutoScrollRow = screenRow;
@@ -959,8 +949,7 @@ export class TUI extends Container {
 					this.requestRender();
 				} else if (!event.press && viewport.hasSelection()) {
 					this.stopSelectionAutoScroll();
-					const text = viewport.endActiveSelection();
-					if (text) this.copySelection(text);
+					viewport.endActiveSelection();
 					this.requestRender();
 				} else if (!event.press) {
 					this.stopSelectionAutoScroll();
@@ -982,8 +971,7 @@ export class TUI extends Container {
 					viewport.extendActiveSelection(event.y - 1, event.x - 1);
 					this.requestRender();
 				} else if (!event.press && viewport.hasSelection()) {
-					const text = viewport.endActiveSelection();
-					if (text) this.copySelection(text);
+					viewport.endActiveSelection();
 					this.requestRender();
 				} else if (!event.press) {
 					viewport.clearSelection();

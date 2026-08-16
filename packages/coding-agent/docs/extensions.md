@@ -28,8 +28,17 @@ Extensions are TypeScript modules that extend Prime Agent's behavior. They can s
 
 See [examples/extensions/](../examples/extensions/) for working implementations.
 
+## Plan, build, and orchestrate modes
+
+Sessions include a built-in workflow extension with `/mode plan`, `/mode build`, and `/mode orchestrate` (the latter currently reports unavailable until a safe delegation capability is provided). PLAN mode exposes only read-only tools and the `ask_user` and `submit_plan` tools. A submitted plan is written to `.prime/<revision>-submitted-<title>.md`; interactive approval is required before entering BUILD mode. `/mode status` reports the current mode and plan revision, while `/mode cancel` discards the current plan and returns to PLAN mode.
+
+## Built-in todo list
+
+Every Prime Agent session includes the `todo` tool and the `/todos` command. The model can add, list, toggle, and clear session-persistent tasks with `todo`; `/todos` displays the current branch's list in interactive mode. Todo state is restored on resume and follows normal branch semantics. `--no-extensions` disables external extensions but retains this core capability. The legacy `examples/extensions/todo.ts` file is a compatibility placeholder and should not be loaded.
+
 ## Table of Contents
 
+- [Built-in todo list](#built-in-todo-list)
 - [Quick Start](#quick-start)
 - [Extension Locations](#extension-locations)
 - [Available Imports](#available-imports)
@@ -2517,7 +2526,7 @@ All examples in [examples/extensions/](../examples/extensions/).
 | `hello.ts` | Minimal tool registration | `registerTool` |
 | `question.ts` | Tool with user interaction | `registerTool`, `ui.select` |
 | `questionnaire.ts` | Multi-step wizard tool | `registerTool`, `ui.custom` |
-| `todo.ts` | Stateful tool with persistence | `registerTool`, `appendEntry`, `renderResult`, session events |
+| `todo.ts` | Compatibility placeholder: the todo tool and `/todos` are built in | no-op (do not load) |
 | `dynamic-tools.ts` | Register tools after startup and during commands | `registerTool`, `session_start`, `registerCommand` |
 | `structured-output.ts` | Final structured-output tool with `terminate: true` | `registerTool`, terminating tool results |
 | `truncated-tool.ts` | Output truncation example | `registerTool`, `truncateHead` |

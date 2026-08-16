@@ -8,9 +8,11 @@ import chalk from "chalk";
 import { minimatch } from "minimatch";
 import { isValidThinkingLevel } from "../cli/args.js";
 import { APP_NAME } from "../config.js";
+import { customModelKey } from "./custom-models.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import type { ModelRegistry } from "./model-registry.js";
 import { isPrivatePrimeInferenceModel } from "./prime-inference-models.js";
+import type { ModelRole, ModelRoleAssignment } from "./settings-manager.js";
 
 const log = getLogger("coding-agent.model-resolver");
 
@@ -51,6 +53,46 @@ export const defaultModelPerProvider: Record<KnownProvider, string> = {
 	"xiaomi-token-plan-ams": "mimo-v2.5-pro",
 	"xiaomi-token-plan-sgp": "mimo-v2.5-pro",
 };
+
+export interface ResolvedTaskModel {
+	role: ModelRole;
+	model: Model<Api>;
+	/** The selected assignment, omitted when the role inherits the current model. */
+	assignment?: ModelRoleAssignment;
+	modelKey: string;
+}
+
+export type ResolveTaskModelResult =
+	| { ok: true; value: ResolvedTaskModel }
+	| { ok: false; code: "profile_unavailable"; message: string; assignment: ModelRoleAssignment };
+
+/** Resolve a role once at task creation; callers retain this immutable result for the task lifetime. */
+export async function resolveTaskModel(options: {
+	role: ModelRole;
+	currentModel: Model<Api>;
+	assignment?: ModelRoleAssignment;
+	modelRegistry: ModelRegistry;
+}): Promise<ResolveTaskModelResult> {
+	const { role, currentModel, assignment, modelRegistry } = options;
+	if (!assignment) {
+		return {
+			ok: true,
+			value: { role, model: currentModel, modelKey: customModelKey(currentModel.provider, currentModel.id) },
+		};
+	}
+	const model = modelRegistry
+		.getAll()
+		.find((candidate) => customModelKey(candidate.provider, candidate.id) === assignment.modelKey);
+	if (!model || !(await modelRegistry.canUseModel(model))) {
+		return {
+			ok: false,
+			code: "profile_unavailable",
+			assignment,
+			message: `The ${role} model profile (${assignment.modelKey}) is unavailable. Configure its credential or choose another model.`,
+		};
+	}
+	return { ok: true, value: { role, model, assignment, modelKey: assignment.modelKey } };
+}
 
 export interface ScopedModel {
 	model: Model<Api>;
