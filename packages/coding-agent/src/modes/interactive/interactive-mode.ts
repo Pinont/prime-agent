@@ -426,6 +426,19 @@ export class BrandSplashHeader implements Component {
 	private readonly gutter = 4;
 	private readonly labelWidth = 9;
 
+	/** Version label with a visible source-vs-release marker.
+	 *  The repo launcher (prime-agent.sh) exports PRIME_AGENT_BUILD_ID, so a
+	 *  git build id means we are running from source; the installed release
+	 *  never has it. */
+	private versionLabel(): string {
+		const buildId = process.env.PRIME_AGENT_BUILD_ID;
+		const release = `v${this.version}`;
+		if (!buildId || buildId === `release-${this.version}`) {
+			return `${release} (release)`;
+		}
+		return `${release} (src ${buildId})`;
+	}
+
 	constructor(
 		private readonly version: string,
 		private readonly getModelId: () => string | undefined,
@@ -462,7 +475,7 @@ export class BrandSplashHeader implements Component {
 		const startHint = this.options.getStartHint?.() ?? "type to start";
 		const metaLines = showMeta
 			? [
-					labelled("version", `v${this.version}`),
+					labelled("version", this.versionLabel()),
 					labelled("model", this.getModelId() ?? "—"),
 					labelled("cwd", formatSplashCwd(this.getCwd())),
 					...extraMetadata.map((line) => labelled(line.label, line.value)),
@@ -515,7 +528,11 @@ export class BrandSplashHeader implements Component {
 			);
 			return " ".repeat(paddingX) + content + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(content)));
 		};
-		const title = truncateToWidth(theme.bold(theme.fg("text", `Prime Agent v${this.version}`)), contentWidth, "");
+		const title = truncateToWidth(
+			theme.bold(theme.fg("text", `Prime Agent ${this.versionLabel()}`)),
+			contentWidth,
+			"",
+		);
 		const lines = [
 			...(this.options.topPadding ? [""] : []),
 			" ".repeat(paddingX) + title + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(title))),
