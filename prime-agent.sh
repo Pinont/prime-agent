@@ -9,10 +9,18 @@ fi
 # Running from source must not collide with an installed release's daemon:
 # give the source build its own daemon socket (config dir stays separate too
 # unless the user already overrode it).
-export PRIME_AGENT_CODING_AGENT_DIR="${PRIME_AGENT_CODING_AGENT_DIR:-$HOME/.prime-agent-source}"
-if [ -z "${PRIME_AGENT_DAEMON_SOCKET:-}" ]; then
-  export PRIME_AGENT_DAEMON_SOCKET="$TMPDIR/prime-agent-source-$(id -u)/daemon.sock"
+# Running from source must not pick up an installed release's daemon env
+# (e.g. inside a daemon-worker shell) or collide with its socket/config.
+# Force an isolated config dir and socket unless the user explicitly overrides.
+if [ -z "${PRIME_AGENT_SOURCE_ISOLATION:-0}" ]; then
+  export PRIME_AGENT_CODING_AGENT_DIR="${PRIME_AGENT_CODING_AGENT_DIR:-$HOME/.prime-agent-source}"
+  export PRIME_AGENT_DAEMON_SOCKET="${PRIME_AGENT_DAEMON_SOCKET:-$TMPDIR/prime-agent-source-$(id -u)/daemon.sock}"
   mkdir -p "$(dirname "$PRIME_AGENT_DAEMON_SOCKET")"
+  # Drop daemon-worker internals so the source TUI never inherits a parent worker.
+  unset PRIME_AGENT_INTERNAL_DAEMON_SUPERVISOR_SOCKET PRIME_AGENT_INTERNAL_DAEMON_WORKER \
+    PRIME_AGENT_INTERNAL_DAEMON_WORKER_ACTIVE_SESSION_ID PRIME_AGENT_INTERNAL_DAEMON_WORKER_TOKEN \
+    PRIME_AGENT_INTERNAL_DAEMON_WORKER_RECOVERY_JOURNAL PRIME_AGENT_INTERNAL_ORPHAN_PROCESS_JOURNAL \
+    PRIME_AGENT_INTERNAL_SESSION_LEASES PRIME_AGENT_INTERNAL_SESSION_LEASE_OWNER_ID
 fi
 
 # Check for --no-env / --dist flags
