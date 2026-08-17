@@ -7461,8 +7461,6 @@ export class InteractiveMode {
 				],
 				dock: this.promptDock,
 				mouse: this.settingsManager.getFullscreenMouse(),
-				// Claude-Code-style rounded frame using the active theme border color.
-				frame: theme.name === "claude-midnight" ? { color: (line) => theme.fg("border", line) } : undefined,
 			});
 		} else {
 			this.ui.exitFullscreen();
