@@ -413,6 +413,12 @@ export class Theme {
 	}
 
 	getEditorBackgroundColor(): ((str: string) => string) | undefined {
+		// claude-midnight renders the prompt as a clear box bounded by the
+		// border-colored lines (line / msg / line), matching the Claude Code
+		// composer; no background fill.
+		if (this.name === "claude-midnight") {
+			return undefined;
+		}
 		return this.surfaceBackgroundColor("userMessageBg");
 	}
 

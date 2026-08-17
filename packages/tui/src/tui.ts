@@ -88,6 +88,9 @@ export interface FullscreenOptions {
 	dock: Component;
 	mouse?: boolean;
 	viewportControls?: boolean;
+	/** Optional rounded frame drawn around the fullscreen UI. The color
+	 *  function paints the border glyphs (e.g. theme border color). */
+	frame?: { color: (line: string) => string };
 }
 
 interface ExitFullscreenOptions {
@@ -341,6 +344,7 @@ export class TUI extends Container {
 		dock: Component;
 		mouse: boolean;
 		viewportControls: boolean;
+		frame?: { color: (line: string) => string };
 		inlineState: {
 			previousLines: string[];
 			previousKittyImageIds: Set<number>;
@@ -688,6 +692,7 @@ export class TUI extends Container {
 			dock: options.dock,
 			mouse: options.mouse !== false,
 			viewportControls: options.viewportControls !== false,
+			frame: options.frame,
 			inlineState: {
 				previousLines: this.previousLines,
 				previousKittyImageIds: this.previousKittyImageIds,
@@ -1509,8 +1514,11 @@ export class TUI extends Container {
 		if (this.overlayStack.length > 0) {
 			frame = withFullscreenImageFallback(() => this.compositeOverlays(frame, width, height));
 		}
-		const cursorPos = this.extractCursorPosition(frame, height);
 		fullscreen.viewport.applyFrameSelection(frame, height, this.overlaySelectionRegions);
+		if (fullscreen.frame) {
+			frame = this.applyRoundedFrame(frame, width, height, fullscreen.frame.color);
+		}
+		const cursorPos = this.extractCursorPosition(frame, height);
 		this.applyLineResets(frame);
 		fullscreen.viewport.paint((data) => this.terminal.write(data), frame, width, height, cursorPos);
 		if (cursorPos && this.showHardwareCursor) {
@@ -1518,6 +1526,35 @@ export class TUI extends Container {
 		} else {
 			this.terminal.hideCursor();
 		}
+	}
+
+	/**
+	 * Wrap the composed fullscreen frame in a rounded border (Claude Code
+	 * style). The content area shrinks by one column on each side; the border
+	 * glyphs are painted with the provided color function.
+	 */
+	private applyRoundedFrame(
+		frame: string[],
+		width: number,
+		height: number,
+		color: (line: string) => string,
+	): string[] {
+		if (width < 4 || height < 3) {
+			return frame;
+		}
+		const innerWidth = Math.max(1, width - 2);
+		const framed: string[] = [];
+		const side = color("│");
+		const top = color("╭" + "─".repeat(innerWidth) + "╮");
+		const bottom = color("╰" + "─".repeat(innerWidth) + "╯");
+		framed.push(top);
+		for (let row = 0; row < height - 2; row++) {
+			const content = frame[row] ?? "";
+			const inner = visibleWidth(content) > innerWidth ? sliceByColumn(content, 0, innerWidth, true) : content;
+			framed.push(side + inner.padEnd(innerWidth) + side);
+		}
+		framed.push(bottom);
+		return framed;
 	}
 
 	private doRender(): void {
