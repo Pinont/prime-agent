@@ -1528,7 +1528,10 @@ export class InteractiveMode {
 		this.mainContainer.addChild(this.editorContainer);
 		this.mainContainer.addChild(this.subagentSummaryLine);
 		this.mainContainer.addChild(this.widgetContainerBelow);
+		// Pad the footer panel so the model/stats line has breathing room.
+		this.footerSlot.addChild(new Spacer(1));
 		this.footerSlot.addChild(this.footer);
+		this.footerSlot.addChild(new Spacer(1));
 		this.mainContainer.addChild(this.footerSlot);
 		for (const component of this.getPromptDockComponents()) {
 			this.promptDock.addChild(component);

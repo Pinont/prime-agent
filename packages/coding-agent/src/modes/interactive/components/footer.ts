@@ -1,4 +1,4 @@
-import { type Component, truncateToWidth } from "@earendil-works/pi-tui";
+import type { Component } from "@earendil-works/pi-tui";
 import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.js";
 import { theme } from "../theme/theme.js";
 
@@ -52,7 +52,7 @@ export class FooterComponent implements Component {
 		// Git watcher cleanup handled by provider
 	}
 
-	render(width: number): string[] {
+	render(_width: number): string[] {
 		if (!this.dataGetter || theme.name !== "claude-midnight") {
 			return [];
 		}
@@ -92,8 +92,6 @@ export class FooterComponent implements Component {
 		if (parts.length === 0) {
 			return [];
 		}
-		const line = ` ${parts.join("  ")} `;
-		const padded = truncateToWidth(line, Math.max(1, width));
-		return [theme.fg("borderMuted", "─".repeat(width)), padded];
+		return [` ${parts.join("  ")} `];
 	}
 }
