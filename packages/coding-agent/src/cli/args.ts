@@ -5,7 +5,7 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { APP_NAME } from "../config.js";
 
-export type Mode = "text" | "json" | "rpc" | "acp" | "daemon";
+export type Mode = "text" | "json" | "rpc" | "acp" | "daemon" | "web";
 
 export interface Args {
 	provider?: string;
@@ -101,7 +101,14 @@ export function parseArgs(args: string[]): Args {
 			result.version = true;
 		} else if ((arg === "--mode" || arg === "-m") && i + 1 < args.length) {
 			const mode = args[++i];
-			if (mode === "text" || mode === "json" || mode === "rpc" || mode === "acp" || mode === "daemon") {
+			if (
+				mode === "text" ||
+				mode === "json" ||
+				mode === "rpc" ||
+				mode === "acp" ||
+				mode === "daemon" ||
+				mode === "web"
+			) {
 				result.mode = mode;
 			}
 		} else if (arg === "--daemon-socket" && i + 1 < args.length) {

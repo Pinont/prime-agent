@@ -171,6 +171,9 @@ export function shouldRejectNonInteractiveBareResume(resume: true | string | und
 }
 
 function resolveAppMode(parsed: Args, stdinIsTTY: boolean): AppMode {
+	if (parsed.mode === "web") {
+		return "interactive";
+	}
 	if (parsed.mode === "daemon") {
 		return "daemon";
 	}
@@ -189,7 +192,7 @@ function resolveAppMode(parsed: Args, stdinIsTTY: boolean): AppMode {
 	return "interactive";
 }
 
-function toPrintOutputMode(appMode: AppMode): Exclude<Mode, "rpc" | "acp" | "daemon"> {
+function toPrintOutputMode(appMode: AppMode): Exclude<Mode, "rpc" | "acp" | "daemon" | "web"> {
 	return appMode === "json" ? "json" : "text";
 }
 
@@ -1065,6 +1068,22 @@ export async function main(args: string[], options?: MainOptions) {
 	const explicitAgentsView = publicCommand.explicitAgentsView;
 
 	const parsed = parseArgs(args);
+	if (parsed.mode === "web") {
+		const { spawn } = await import("node:child_process");
+		const webRoot = resolve(process.cwd(), "packages/web-ui");
+		const child = spawn("npm", ["run", "dev", "--", "--host"], {
+			cwd: webRoot,
+			stdio: "inherit",
+			env: {
+				...process.env,
+				PRIME_AGENT_VERSION: VERSION,
+				PRIME_AGENT_MODEL: parsed.model ?? "unknown",
+				PRIME_AGENT_CWD: process.cwd(),
+			},
+		});
+		await new Promise<void>((resolveExit) => child.on("exit", () => resolveExit()));
+		return;
+	}
 	if (parsed.diagnostics.length > 0) {
 		for (const d of parsed.diagnostics) {
 			const color = d.type === "error" ? chalk.red : chalk.yellow;
