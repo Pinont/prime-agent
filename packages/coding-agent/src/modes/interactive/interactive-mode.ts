@@ -205,6 +205,14 @@ import { FooterComponent } from "./components/footer.js";
 import { HeartbeatManagerComponent } from "./components/heartbeat-manager.js";
 import { InjectedPromptMessageComponent, isInjectedPromptMessage } from "./components/injected-prompt-message.js";
 import { formatKeyText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.js";
+import {
+	type AgentMode,
+	MODE_BORDER_COLOR,
+	MODE_LABEL,
+	ModeBox,
+	nextMode,
+	previousMode,
+} from "./components/mode-box.js";
 import type { AuthSelectorProvider } from "./components/oauth-selector.js";
 import { PrimeOnboardingSplashComponent } from "./components/prime-onboarding-splash.js";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
@@ -999,6 +1007,10 @@ export class InteractiveMode {
 	/** Set when this client initiates a main-thread ! / !! run, so bash_end only
 	 *  triggers the shell follow-up for runs the local user performed. */
 	private ownBashFollowupPending = false;
+	private chatBorder: BorderedBox | undefined;
+	private modeBoxContainer: Container | undefined;
+	private modeBox: ModeBox | undefined;
+	private currentMode: AgentMode = "build";
 	// The pane-mounted component of our own side run; bash_end seeds the side
 	// transcript only when it ends this exact component.
 	private sideQuestionBashComponent: BashExecutionComponent | undefined;
@@ -1186,7 +1198,8 @@ export class InteractiveMode {
 		this.mainViewContainer = new Container();
 		this.promptDock = new Container();
 		this.footerSlot = new Container();
-		this.mainViewContainer.addChild(this.chatContainer);
+		this.chatBorder = new BorderedBox(this.chatContainer, MODE_BORDER_COLOR[this.currentMode]);
+		this.mainViewContainer.addChild(theme.name === "claude-midnight" ? this.chatBorder : this.chatContainer);
 		this.mainViewContainer.addChild(this.shortcutGuideContainer);
 		this.mainViewContainer.addChild(this.pendingMessagesContainer);
 		this.mainViewContainer.addChild(this.statusContainer);
@@ -1500,6 +1513,10 @@ export class InteractiveMode {
 		}
 
 		this.mainContainer.addChild(this.mainViewContainer);
+		this.modeBoxContainer = new Container();
+		this.modeBox = new ModeBox(this.currentMode);
+		this.modeBoxContainer.addChild(this.modeBox);
+		this.mainContainer.addChild(this.modeBoxContainer);
 		this.renderWidgets(); // Initialize with default spacer
 		this.mainContainer.addChild(this.widgetContainerAbove);
 		this.renderRecap();
@@ -1530,6 +1547,7 @@ export class InteractiveMode {
 		}
 		this.isInitialized = true;
 		void this.refreshSessionCostSummary().then(() => this.footer.invalidate());
+		void this.refreshModeFromSession();
 
 		// Initialize extensions first so resources are shown before messages
 		await this.rebindCurrentSession();
@@ -4257,6 +4275,75 @@ export class InteractiveMode {
 	// Key Handlers
 	// =========================================================================
 
+	/**
+	 * Apply the current mode to the mode box and the chat border color.
+	 */
+	private applyMode(mode: AgentMode): void {
+		this.currentMode = mode;
+		this.modeBox?.setMode(mode);
+		if (this.chatBorder) {
+			const current = this.chatBorder;
+			const index = this.mainViewContainer.children.indexOf(current);
+			if (index !== -1) {
+				this.mainViewContainer.children.splice(index, 1);
+				this.chatBorder = new BorderedBox(this.chatContainer, MODE_BORDER_COLOR[mode]);
+				this.mainViewContainer.children.splice(index, 0, this.chatBorder);
+			}
+		}
+		if (this.modeBoxContainer) {
+			this.modeBoxContainer.clear();
+			this.modeBox = new ModeBox(mode);
+			this.modeBoxContainer.addChild(this.modeBox);
+		}
+		this.ui.requestRender();
+	}
+
+	/**
+	 * Read the current mode from the session's plan-mode custom entry so the
+	 * mode box and chat border reflect the persisted state (e.g. after resume
+	 * or /reload), not just the local default.
+	 */
+	private async refreshModeFromSession(): Promise<void> {
+		try {
+			const { tree } = await this.agentConnection.getSessionTree();
+			const walk = (node: {
+				entry: { type: string; customType?: string; data?: unknown };
+				children?: unknown[];
+			}): void => {
+				if (node.entry.type === "custom" && node.entry.customType === "prime-agent.plan-mode") {
+					const data = node.entry.data as { mode?: AgentMode } | undefined;
+					const mode = data?.mode;
+					if (mode && mode in MODE_LABEL && mode !== this.currentMode) {
+						this.applyMode(mode);
+					}
+				}
+				for (const child of node.children ?? []) {
+					walk(child as typeof node);
+				}
+			};
+			for (const node of tree) {
+				walk(node as typeof node);
+			}
+		} catch {
+			// Session tree unavailable (daemon restart etc.); keep the current mode.
+		}
+	}
+
+	/** Cycle the agent mode forward (plan -> build -> orchestrate -> goal). */
+	private cycleMode(direction: 1 | -1): void {
+		const next = direction === 1 ? nextMode(this.currentMode) : previousMode(this.currentMode);
+		this.applyMode(next);
+		// Persist + enforce through the mode extension command.
+		void this.agentConnection
+			.prompt(`/mode ${MODE_LABEL[next]}`, {
+				streamingBehavior: "steer",
+				queueIfBusy: true,
+			})
+			.catch((error) => {
+				this.showError(error instanceof Error ? error.message : String(error));
+			});
+	}
+
 	private setupKeyHandlers(): void {
 		this.defaultEditor.getHeaderLine = () => this.getQueueSelectionHeader();
 		// Set up handlers on defaultEditor - they use this.editor for text access
@@ -4277,6 +4364,12 @@ export class InteractiveMode {
 			void this.handleDebugCommand();
 		};
 		this.defaultEditor.onAction("app.model.select", () => this.showModelSelector());
+		this.defaultEditor.onAction("app.mode.cycle", () => {
+			// Only cycle modes when a selector/config menu is not open (shift+tab
+			// is also the configuration menu's previous-tab key).
+			if (this.editorContainer.children[0] === this.editor) this.cycleMode(1);
+		});
+		this.defaultEditor.onAction("app.mode.cycleBack", () => this.cycleMode(-1));
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
 		this.defaultEditor.onAction("app.messages.expand", () => this.toggleAgentMessageExpansion());
 		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
@@ -7373,6 +7466,7 @@ export class InteractiveMode {
 				scroll: [
 					this.headerContainer,
 					this.mainViewContainer,
+					...(this.modeBoxContainer ? [this.modeBoxContainer] : []),
 					this.widgetContainerAbove,
 					...this.getPromptContextContainers(),
 					this.widgetContainerBelow,

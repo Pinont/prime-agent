@@ -8,14 +8,21 @@ import { theme } from "../theme/theme.js";
  * as nested boxes inside the outer rounded frame.
  */
 export class BorderedBox implements Component {
-	constructor(private readonly child: Component) {}
+	private readonly color: (line: string) => string;
+
+	constructor(
+		private readonly child: Component,
+		color?: (line: string) => string,
+	) {
+		this.color = color ?? ((line: string) => theme.fg("border", line));
+	}
 
 	invalidate(): void {
 		this.child.invalidate();
 	}
 
 	render(width: number): string[] {
-		const color = (line: string) => theme.fg("border", line);
+		const color = this.color;
 		const innerWidth = Math.max(1, width - 2);
 		const childLines = this.child.render(innerWidth);
 		const lines: string[] = [];
