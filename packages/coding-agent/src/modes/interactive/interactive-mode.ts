@@ -205,7 +205,14 @@ import { FooterComponent } from "./components/footer.js";
 import { HeartbeatManagerComponent } from "./components/heartbeat-manager.js";
 import { InjectedPromptMessageComponent, isInjectedPromptMessage } from "./components/injected-prompt-message.js";
 import { formatKeyText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.js";
-import { type AgentMode, MODE_BORDER_COLOR, MODE_LABEL, nextMode, previousMode } from "./components/mode-box.js";
+import {
+	type AgentMode,
+	MODE_BORDER_COLOR,
+	MODE_LABEL,
+	modeChip,
+	nextMode,
+	previousMode,
+} from "./components/mode-box.js";
 import type { AuthSelectorProvider } from "./components/oauth-selector.js";
 import { PrimeOnboardingSplashComponent } from "./components/prime-onboarding-splash.js";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
@@ -6295,13 +6302,9 @@ export class InteractiveMode {
 				? `${formatTokenCount(usage.tokens)} (${Math.round(usage.percent)}%)`
 				: undefined;
 		const modeColored =
-			this.currentMode === "plan"
-				? theme.fg("accent", "{ plan }")
-				: this.currentMode === "build"
-					? theme.fg("success", "{ build }")
-					: this.currentMode === "goal"
-						? theme.fg("customMessageLabel", "{ goal }")
-						: undefined;
+			this.currentMode === "plan" || this.currentMode === "build" || this.currentMode === "goal"
+				? modeChip(this.currentMode)
+				: undefined;
 		return (
 			[goalLabel, heartbeatLabel, contextLabel, modeColored].filter((label) => label !== undefined).join(" · ") ||
 			undefined

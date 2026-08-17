@@ -11,6 +11,18 @@ export const MODE_BORDER_COLOR: Record<AgentMode, (line: string) => string> = {
 	goal: (line) => theme.fg("customMessageLabel", line),
 };
 
+/**
+ * Render the mode as a highlighted chip: the mode color becomes the
+ * background with dark text, instead of brace-drawn box characters.
+ */
+export function modeChip(mode: AgentMode): string {
+	const colored = MODE_BORDER_COLOR[mode](` ${MODE_LABEL[mode]} `);
+	// Convert the fg color escape (38;2) into a background escape (48;2) so the
+	// whole chip is filled with the mode color; the label text stays visible.
+	const bgColored = colored.replace(/38;2/g, "48;2");
+	return `\x1b[30m${bgColored}\x1b[49m\x1b[39m`;
+}
+
 /** Label shown inside the { mode } box. */
 export const MODE_LABEL: Record<AgentMode, string> = {
 	plan: "plan",

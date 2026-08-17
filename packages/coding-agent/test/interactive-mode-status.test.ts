@@ -3973,8 +3973,8 @@ describe("InteractiveMode tray goal label", () => {
 		};
 	}
 
-	// The mode box is rendered as a colored { mode } suffix on the tray label.
-	const modeSuffix = " · { build }";
+	// The mode box is rendered as a highlighted chip suffix on the tray label.
+	const modeSuffix = " ·  build ";
 
 	test("shows active goals in the lower tray without an objective", () => {
 		const fakeThis = Object.create(InteractiveMode.prototype) as TrayLabelHarness;
