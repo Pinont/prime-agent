@@ -4281,15 +4281,7 @@ export class InteractiveMode {
 	private applyMode(mode: AgentMode): void {
 		this.currentMode = mode;
 		this.modeBox?.setMode(mode);
-		if (this.chatBorder) {
-			const current = this.chatBorder;
-			const index = this.mainViewContainer.children.indexOf(current);
-			if (index !== -1) {
-				this.mainViewContainer.children.splice(index, 1);
-				this.chatBorder = new BorderedBox(this.chatContainer, MODE_BORDER_COLOR[mode]);
-				this.mainViewContainer.children.splice(index, 0, this.chatBorder);
-			}
-		}
+		this.updateEditorBorderColor();
 		if (this.modeBoxContainer) {
 			this.modeBoxContainer.clear();
 			this.modeBox = new ModeBox(mode);
@@ -7445,7 +7437,10 @@ export class InteractiveMode {
 
 	private updateEditorBorderColor(): void {
 		const editorTheme = getEditorTheme();
-		this.editor.borderColor = editorTheme.borderColor;
+		// In claude-midnight the prompt box border follows the active mode color
+		// (plan/build/goal); other themes keep the theme border color.
+		this.editor.borderColor =
+			theme.name === "claude-midnight" ? MODE_BORDER_COLOR[this.currentMode] : editorTheme.borderColor;
 		this.editor.backgroundColor = editorTheme.backgroundColor;
 		this.ui.requestRender();
 	}
