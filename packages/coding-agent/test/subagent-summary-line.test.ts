@@ -24,12 +24,14 @@ describe("SubagentSummaryLine", () => {
 		setKeybindings(new KeybindingsManager());
 	});
 
-	it("renders no subagent line without children and uses singular and plural labels", () => {
+	it("always shows the subagent summary line (including zero) and uses singular and plural labels", () => {
 		const line = new SubagentSummaryLine();
-		expect(line.render(120)).toEqual([]);
+		let rendered = line.render(120).map(stripAnsi);
+		expect(rendered).toHaveLength(1);
+		expect(rendered[0]).toContain("0 subagents: 0 running · 0 idle · 0 inactive");
 
 		line.setSubagentCounts({ total: 1, running: 1, idle: 0, inactive: 0 });
-		let rendered = line.render(120).map(stripAnsi);
+		rendered = line.render(120).map(stripAnsi);
 		expect(rendered).toHaveLength(1);
 		expect(rendered[0]).toContain("1 subagent: 1 running · 0 idle · 0 inactive");
 
@@ -167,7 +169,9 @@ describe("SubagentSummaryLine", () => {
 		) => void;
 
 		update.call(mode, worker);
-		expect(line.render(100)).toEqual([]);
+		// The summary line is always visible now, so without a matching parent
+		// id it still shows the zero-state line.
+		expect(stripAnsi(line.render(100).join("\n"))).toContain("0 subagents:");
 		Reflect.set(mode, "rlmNodeId", "me");
 		seed.call(mode, [worker]);
 

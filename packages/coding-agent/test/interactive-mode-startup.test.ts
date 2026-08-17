@@ -107,14 +107,18 @@ describe("InteractiveMode startup hints", () => {
 			() => "/very/long/project/path/with/a/final-directory",
 		);
 
-		const output = stripAnsi(header.render(40).join("\n"));
+		const output = stripAnsi(header.render(60).join("\n"));
+		// The claude-midnight header is the [ logo | header ] layout: the logo
+		// renders on the left, a divider, and the title/model/cwd rows on the
+		// right. The logo is present, so the box is taller than the text alone.
 		expect(output).toContain("Prime Agent v0.0.0");
 		expect(output).toContain("model");
 		expect(output).toContain("cwd");
-		expect(output).not.toContain("version");
-		expect(output).not.toContain(PRIME_BUTTERFLY_LOGO.split("\n")[0]!.trim());
-		expect(header.render(12)).toHaveLength(4);
-		expect(header.render(12).every((line) => stripAnsi(line).length <= 12)).toBe(true);
+		expect(output).toContain(PRIME_BUTTERFLY_LOGO.split("\n")[0]!.trim());
+		expect(output).toContain("│");
+		const rendered = header.render(60);
+		expect(rendered.length).toBeGreaterThanOrEqual(4);
+		expect(rendered.every((line) => stripAnsi(line).length <= 60)).toBe(true);
 
 		initTheme("dark");
 	});

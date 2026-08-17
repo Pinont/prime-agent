@@ -523,48 +523,52 @@ export class BrandSplashHeader implements Component {
 	private renderCodexHeader(width: number): string[] {
 		const safeWidth = Math.max(1, width);
 		const paddingX = safeWidth > 1 ? 1 : 0;
-		const contentWidth = Math.max(1, safeWidth - paddingX * 2);
-		const labelWidth = Math.min(this.labelWidth, Math.max(1, contentWidth - 1));
-		const valueWidth = Math.max(1, contentWidth - labelWidth - 1);
 		const extraMetadata = this.options.getExtraMetadata?.() ?? [];
-		const row = (label: string, value: string) => {
-			const displayValue =
-				label === "cwd" ? truncatePathMiddle(value, valueWidth) : truncateToWidth(value, valueWidth);
-			const content = truncateToWidth(
-				theme.fg("dim", label.padEnd(labelWidth)) + " " + theme.fg("muted", displayValue),
-				contentWidth,
-				"",
-			);
-			return " ".repeat(paddingX) + content + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(content)));
-		};
-		const title = truncateToWidth(
-			theme.bold(theme.fg("text", `Prime Agent ${this.versionLabel()}`)),
-			contentWidth,
-			"",
+
+		// [ logo | header ] layout: logo column on the left, a vertical divider,
+		// then the title/model/cwd rows on the right, vertically centered.
+		const logoLines = this.logoRaw.map((line) => theme.fg("accent", line));
+		const logoWidth = this.logoCanvasWidth;
+		const divider = theme.fg("borderMuted", "│");
+		const dividerGap = 2;
+
+		const headerRows: string[] = [];
+		headerRows.push(theme.bold(theme.fg("text", `Prime Agent ${this.versionLabel()}`)));
+		headerRows.push(
+			`${theme.fg("dim", "model".padEnd(this.labelWidth))} ${theme.fg("muted", this.getModelId() ?? "—")}`,
 		);
-		const lines = [
-			...(this.options.topPadding ? [""] : []),
-			" ".repeat(paddingX) + title + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(title))),
-			row("model", this.getModelId() ?? "—"),
-			row("cwd", formatSplashCwd(this.getCwd())),
-			...extraMetadata.map((line) => row(line.label, line.value)),
-		];
+		headerRows.push(
+			`${theme.fg("dim", "cwd".padEnd(this.labelWidth))} ${theme.fg("muted", formatSplashCwd(this.getCwd()))}`,
+		);
+		for (const meta of extraMetadata) {
+			headerRows.push(`${theme.fg("dim", meta.label.padEnd(this.labelWidth))} ${theme.fg("muted", meta.value)}`);
+		}
 		if (!this.options.getHideStartHint?.()) {
-			const hint = truncateToWidth(
-				theme.fg("dim", this.options.getStartHint?.() ?? "type to start"),
-				contentWidth,
-				"",
-			);
-			lines.push(" ".repeat(paddingX) + hint + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(hint))));
+			headerRows.push(theme.fg("dim", this.options.getStartHint?.() ?? "type to start"));
 		}
 		if (this.verboseInstructions) {
-			lines.push(" ".repeat(safeWidth));
 			for (const instruction of this.verboseInstructions.split("\n")) {
-				const content = truncateToWidth(instruction, contentWidth);
-				lines.push(
-					" ".repeat(paddingX) + content + " ".repeat(Math.max(0, safeWidth - paddingX - visibleWidth(content))),
-				);
+				headerRows.push(theme.fg("dim", instruction));
 			}
+		}
+
+		const rowCount = Math.max(logoLines.length, headerRows.length);
+		const headerStart = Math.max(0, Math.floor((rowCount - headerRows.length) / 2));
+		const logoStart = Math.max(0, Math.floor((rowCount - logoLines.length) / 2));
+
+		const rightX = paddingX + logoWidth + dividerGap + 1;
+		const rightWidth = Math.max(1, safeWidth - rightX - paddingX);
+
+		const lines = this.options.topPadding ? [""] : [];
+		for (let row = 0; row < rowCount; row++) {
+			const logoLine = row >= logoStart && row < logoStart + logoLines.length ? logoLines[row - logoStart]! : "";
+			const logoCell = logoLine + " ".repeat(Math.max(0, logoWidth - visibleWidth(logoLine)));
+			const dividerCell = logoWidth > 0 ? `${divider} ` : "";
+			const headerLine =
+				row >= headerStart && row < headerStart + headerRows.length ? headerRows[row - headerStart]! : "";
+			const headerCell = truncateToWidth(headerLine, rightWidth, "");
+			const content = `${" ".repeat(paddingX)}${logoCell}${dividerCell}${headerCell}`;
+			lines.push(content + " ".repeat(Math.max(0, safeWidth - visibleWidth(content))));
 		}
 		return lines;
 	}
