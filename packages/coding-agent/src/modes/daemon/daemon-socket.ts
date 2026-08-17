@@ -34,6 +34,13 @@ export interface DaemonSocketIdentity {
 }
 
 export function defaultDaemonSocketPath(): string {
+	// Allow an isolated daemon socket (e.g. running from source while an
+	// installed release daemon is active). Override is per-process; children
+	// inherit it, so the client, worker, and daemon all share the same socket.
+	const override = process.env.PRIME_AGENT_DAEMON_SOCKET;
+	if (override) {
+		return override;
+	}
 	if (process.platform === "win32") {
 		return "\\\\.\\pipe\\prime-agent-daemon";
 	}

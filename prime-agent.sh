@@ -6,6 +6,11 @@ export PRIME_AGENT_LAUNCHER_PATH="$SCRIPT_DIR/prime-agent.sh"
 if BUILD_ID="$(git -C "$SCRIPT_DIR" describe --tags --always --dirty 2>/dev/null)"; then
   export PRIME_AGENT_BUILD_ID="$BUILD_ID"
 fi
+# Running from source must not collide with an installed release's daemon:
+# give the source build its own daemon socket (config dir stays separate too
+# unless the user already overrode it).
+export PRIME_AGENT_DAEMON_SOCKET="${PRIME_AGENT_DAEMON_SOCKET:-$TMPDIR/prime-agent-source-$(id -u)/daemon.sock}"
+export PRIME_AGENT_CODING_AGENT_DIR="${PRIME_AGENT_CODING_AGENT_DIR:-$HOME/.prime-agent-source}"
 
 # Check for --no-env / --dist flags
 NO_ENV=false

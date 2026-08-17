@@ -1075,6 +1075,12 @@ export async function main(args: string[], options?: MainOptions) {
 		}
 	}
 	time("parseArgs");
+	// Version is a CLI metadata query and must remain on stdout even when stdin
+	// is non-interactive (where normal output is redirected to stderr).
+	if (parsed.version) {
+		console.log(VERSION);
+		process.exit(0);
+	}
 	const appMode = resolveAppMode(parsed, process.stdin.isTTY);
 
 	if (shouldRejectNonInteractiveAttach(publicCommand.attachAgent, appMode)) {
@@ -1091,10 +1097,6 @@ export async function main(args: string[], options?: MainOptions) {
 		takeOverStdout();
 	}
 
-	if (parsed.version) {
-		console.log(VERSION);
-		process.exit(0);
-	}
 	if (parsed.help) {
 		console.log(formatTopLevelHelp());
 		process.exit(0);

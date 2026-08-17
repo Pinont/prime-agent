@@ -66,6 +66,39 @@ describe("InteractiveMode startup hints", () => {
 		expect(unpadded.render(120)[0]).not.toBe("");
 	});
 
+	it("marks the header version as source or release build", () => {
+		const original = process.env.PRIME_AGENT_BUILD_ID;
+		try {
+			delete process.env.PRIME_AGENT_BUILD_ID;
+			const release = new BrandSplashHeader(
+				"0.7.2",
+				() => "model",
+				() => "/cwd",
+				undefined,
+				{ topPadding: true },
+			);
+			expect(stripAnsi(release.render(120).join("\n"))).toContain("v0.7.2 (release)");
+
+			process.env.PRIME_AGENT_BUILD_ID = "abc1234";
+			const source = new BrandSplashHeader(
+				"0.7.2",
+				() => "model",
+				() => "/cwd",
+				undefined,
+				{ topPadding: true },
+			);
+			const output = stripAnsi(source.render(120).join("\n"));
+			expect(output).toContain("v0.7.2 (src abc1234)");
+			expect(output).not.toContain("(release)");
+		} finally {
+			if (original === undefined) {
+				delete process.env.PRIME_AGENT_BUILD_ID;
+			} else {
+				process.env.PRIME_AGENT_BUILD_ID = original;
+			}
+		}
+	});
+
 	it("uses a Codex-style header only for the claude-midnight theme", () => {
 		initTheme("claude-midnight");
 		const header = new BrandSplashHeader(
