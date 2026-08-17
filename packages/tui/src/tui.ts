@@ -1544,9 +1544,12 @@ export class TUI extends Container {
 		}
 		const innerWidth = Math.max(1, width - 2);
 		const framed: string[] = [];
+		// Rounded corners with heavy (3x) line weight: Unicode has no heavy
+		// rounded corner glyph, so pair the rounded arc corners with heavy
+		// horizontal/vertical strokes.
 		const side = color("┃");
-		const top = color("┏" + "━".repeat(innerWidth) + "┓");
-		const bottom = color("┗" + "━".repeat(innerWidth) + "┛");
+		const top = color("╭" + "━".repeat(innerWidth) + "╮");
+		const bottom = color("╰" + "━".repeat(innerWidth) + "╯");
 		framed.push(top);
 		for (let row = 0; row < height - 2; row++) {
 			const content = frame[row] ?? "";

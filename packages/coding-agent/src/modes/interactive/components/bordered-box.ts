@@ -26,13 +26,13 @@ export class BorderedBox implements Component {
 		const innerWidth = Math.max(1, width - 2);
 		const childLines = this.child.render(innerWidth);
 		const lines: string[] = [];
-		lines.push(color("┏" + "━".repeat(innerWidth) + "┓"));
+		lines.push(color("╭" + "━".repeat(innerWidth) + "╮"));
 		for (const line of childLines) {
 			const inner = truncateToWidth(line, innerWidth, "");
 			const pad = " ".repeat(Math.max(0, innerWidth - visibleWidth(inner)));
 			lines.push(color("┃") + inner + pad + color("┃"));
 		}
-		lines.push(color("┗" + "━".repeat(innerWidth) + "┛"));
+		lines.push(color("╰" + "━".repeat(innerWidth) + "╯"));
 		return lines;
 	}
 }
