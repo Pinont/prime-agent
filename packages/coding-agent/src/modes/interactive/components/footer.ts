@@ -94,6 +94,6 @@ export class FooterComponent implements Component {
 		}
 		const line = ` ${parts.join("  ")} `;
 		const padded = truncateToWidth(line, Math.max(1, width));
-		return [theme.fg("borderMuted", "─".repeat(width)), padded];
+		return [theme.fg("borderMuted", "━".repeat(width)), padded];
 	}
 }

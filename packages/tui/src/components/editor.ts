@@ -553,7 +553,7 @@ export class Editor implements Component, Focusable {
 		// Store for cursor navigation (must match wrapping width)
 		this.lastWidth = layoutWidth;
 
-		const horizontal = this.borderColor("─");
+		const horizontal = this.borderColor("━");
 
 		// Layout the text
 		const layoutLines = this.layoutText(layoutWidth);
@@ -595,7 +595,7 @@ export class Editor implements Component, Focusable {
 		if (!useBackgroundSurface) {
 			// Render top border (with scroll indicator if scrolled down)
 			if (this.scrollOffset > 0) {
-				const indicator = `─── ↑ ${this.scrollOffset} more `;
+				const indicator = `━━━ ↑ ${this.scrollOffset} more `;
 				const remaining = width - visibleWidth(indicator);
 				if (remaining >= 0) {
 					result.push(this.borderColor(indicator + "─".repeat(remaining)));
@@ -671,7 +671,7 @@ export class Editor implements Component, Focusable {
 		const linesBelow = layoutLines.length - (this.scrollOffset + visibleLines.length);
 		if (!useBackgroundSurface) {
 			if (linesBelow > 0) {
-				const indicator = `─── ↓ ${linesBelow} more `;
+				const indicator = `━━━ ↓ ${linesBelow} more `;
 				const remaining = width - visibleWidth(indicator);
 				result.push(this.borderColor(indicator + "─".repeat(Math.max(0, remaining))));
 			} else {

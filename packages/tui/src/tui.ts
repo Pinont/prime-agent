@@ -1544,9 +1544,9 @@ export class TUI extends Container {
 		}
 		const innerWidth = Math.max(1, width - 2);
 		const framed: string[] = [];
-		const side = color("│");
-		const top = color("╭" + "─".repeat(innerWidth) + "╮");
-		const bottom = color("╰" + "─".repeat(innerWidth) + "╯");
+		const side = color("┃");
+		const top = color("┏" + "━".repeat(innerWidth) + "┓");
+		const bottom = color("┗" + "━".repeat(innerWidth) + "┛");
 		framed.push(top);
 		for (let row = 0; row < height - 2; row++) {
 			const content = frame[row] ?? "";
