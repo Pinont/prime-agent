@@ -558,14 +558,14 @@ export class BrandSplashHeader implements Component {
 		const headerStart = Math.max(0, Math.floor((rowCount - headerRows.length) / 2));
 		const logoStart = Math.max(0, Math.floor((rowCount - logoLines.length) / 2));
 
-		const rightX = paddingX + logoWidth + dividerGap + 1;
+		const rightX = paddingX + logoWidth + dividerGap + 2;
 		const rightWidth = Math.max(1, safeWidth - rightX - paddingX);
 
 		const lines = this.options.topPadding ? [""] : [];
 		for (let row = 0; row < rowCount; row++) {
 			const logoLine = row >= logoStart && row < logoStart + logoLines.length ? logoLines[row - logoStart]! : "";
 			const logoCell = logoLine + " ".repeat(Math.max(0, logoWidth - visibleWidth(logoLine)));
-			const dividerCell = logoWidth > 0 ? `${divider} ` : "";
+			const dividerCell = logoWidth > 0 ? ` ${divider} ` : "";
 			const headerLine =
 				row >= headerStart && row < headerStart + headerRows.length ? headerRows[row - headerStart]! : "";
 			const headerCell = truncateToWidth(headerLine, rightWidth, "");
