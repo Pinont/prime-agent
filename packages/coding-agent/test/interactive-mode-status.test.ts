@@ -3973,8 +3973,9 @@ describe("InteractiveMode tray goal label", () => {
 		};
 	}
 
-	// The mode box is rendered as a highlighted chip suffix on the tray label.
-	const modeSuffix = " ·  build ";
+	// The mode box is rendered as a highlighted chip suffix on the tray label,
+	// with the cycling hint beside it.
+	const modeSuffix = " ·  build  (shift+tab)";
 
 	test("shows active goals in the lower tray without an objective", () => {
 		const fakeThis = Object.create(InteractiveMode.prototype) as TrayLabelHarness;

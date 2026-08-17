@@ -20,7 +20,8 @@ export function modeChip(mode: AgentMode): string {
 	// Convert the fg color escape (38;2) into a background escape (48;2) so the
 	// whole chip is filled with the mode color; the label text stays visible.
 	const bgColored = colored.replace(/38;2/g, "48;2");
-	return `\x1b[30m${bgColored}\x1b[49m\x1b[39m`;
+	// The chip label carries the cycling hint beside the highlighted mode word.
+	return `\x1b[30m${bgColored}\x1b[49m\x1b[39m${theme.fg("dim", " (shift+tab)")}`;
 }
 
 /** Label shown inside the { mode } box. */
