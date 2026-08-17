@@ -81,24 +81,27 @@ export class SubagentSummaryLine implements Component, Focusable {
 	}
 
 	render(width: number): string[] {
-		const lines = this.renderInfoLine(width);
-		// Always show the subagent summary line (0 subagents included) so the
-		// row is stable and discoverable.
+		// The subagent summary is part of the tray line itself (replacing the
+		// model slot): "agents/resume  N subagents: N running · N idle · N
+		// inactive  ? for shortcuts  [mode]".
+		return this.renderInfoLine(width);
+	}
+
+	private subagentSummaryText(): string {
 		const summary = `${this.counts.total} subagent${this.counts.total === 1 ? "" : "s"}: ${this.counts.running} running · ${this.counts.idle} idle · ${this.counts.inactive} inactive`;
 		const openHint = this.openable
 			? `  ${keyText("tui.select.confirm")} or ${keyText("app.agents.open")} to open`
 			: "";
-		const text = `${this.focused ? "▸" : " "} ${summary}${openHint}`;
-		const line = truncateToWidth(text, width, "…");
-		lines.push(this.focused ? theme.bg("selectedBg", line.padEnd(width)) : theme.fg("dim", line));
-		return lines;
+		return `${this.focused ? "▸" : " "} ${summary}${openHint}`;
 	}
 
 	private renderInfoLine(width: number): string[] {
 		const overrideLabel = this.getOverrideLabel()?.trim();
 		const locationLabel = this.getLocationLabel()?.trim();
 		const contextLabel = this.getContextLabel()?.trim();
-		const left = overrideLabel || locationLabel || "";
+		const baseLeft = overrideLabel || locationLabel || "";
+		const subagentPart = this.subagentSummaryText();
+		const left = [baseLeft, subagentPart].filter((part) => part.trim().length > 0).join("  ");
 		if (!left && !contextLabel) return [];
 		// Reserve two columns for the outer frame's side borders so the whole
 		// line (including the right-aligned mode box) fits inside the frame.

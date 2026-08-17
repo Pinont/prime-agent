@@ -115,7 +115,7 @@ describe("InteractiveMode startup hints", () => {
 		expect(output).toContain("model");
 		expect(output).toContain("cwd");
 		expect(output).toContain(PRIME_BUTTERFLY_LOGO.split("\n")[0]!.trim());
-		expect(output).toContain("│");
+		expect(output).toContain("┆");
 		const rendered = header.render(60);
 		expect(rendered.length).toBeGreaterThanOrEqual(4);
 		expect(rendered.every((line) => stripAnsi(line).length <= 60)).toBe(true);
@@ -133,11 +133,11 @@ describe("InteractiveMode startup hints", () => {
 		}
 	});
 
-	it("places the fresh-chat shortcut hint after the model and effort", () => {
+	it("returns empty tray location for fresh chat without agents view", () => {
 		const mode = createMode();
 		const label = Reflect.get(InteractiveMode.prototype, "getTrayLocationLabel").call(mode);
 
-		expect(stripAnsi(label)).toBe("test-model • high  ? for shortcuts");
+		expect(stripAnsi(label)).toBe("");
 	});
 
 	it("routes session-view requests through the existing agents-view return path", async () => {
@@ -215,39 +215,39 @@ describe("InteractiveMode startup hints", () => {
 		expect(shutdown).not.toHaveBeenCalled();
 	});
 
-	it("keeps the lowercase agents hint while typing", () => {
+	it("keeps the agents hint while typing (no model/shortcuts in tray)", () => {
 		let editorText = "";
 		const mode = createMode(false, true, () => editorText);
 		const getLabel = () => Reflect.get(InteractiveMode.prototype, "getTrayLocationLabel").call(mode);
 
-		expect(stripAnsi(getLabel())).toBe("← agents/resume  test-model • high  ? for shortcuts");
+		expect(stripAnsi(getLabel())).toBe("← agents/resume");
 
 		editorText = "draft prompt";
-		expect(stripAnsi(getLabel())).toBe("← agents/resume  test-model • high");
+		expect(stripAnsi(getLabel())).toBe("← agents/resume");
 	});
 
-	it("hides the fresh-chat shortcut hint while the prompt has text", () => {
+	it("returns empty tray location for fresh chat with text (no agents view)", () => {
 		let editorText = "";
 		const mode = createMode(false, false, () => editorText);
 		const getLabel = () => Reflect.get(InteractiveMode.prototype, "getTrayLocationLabel").call(mode);
 
-		expect(stripAnsi(getLabel())).toBe("test-model • high  ? for shortcuts");
+		expect(stripAnsi(getLabel())).toBe("");
 
 		editorText = "draft prompt";
-		expect(stripAnsi(getLabel())).toBe("test-model • high");
+		expect(stripAnsi(getLabel())).toBe("");
 
 		editorText = " ";
-		expect(stripAnsi(getLabel())).toBe("test-model • high");
+		expect(stripAnsi(getLabel())).toBe("");
 
 		editorText = "";
-		expect(stripAnsi(getLabel())).toBe("test-model • high  ? for shortcuts");
+		expect(stripAnsi(getLabel())).toBe("");
 	});
 
-	it("hides the tray shortcut guidance for chats with history", () => {
+	it("returns empty tray location for chat with history (no agents view)", () => {
 		const mode = createMode(true);
 		const label = Reflect.get(InteractiveMode.prototype, "getTrayLocationLabel").call(mode);
 
-		expect(stripAnsi(label)).toBe("test-model • high");
+		expect(stripAnsi(label)).toBe("");
 	});
 
 	it("keeps the question-mark shortcut guide compact", () => {

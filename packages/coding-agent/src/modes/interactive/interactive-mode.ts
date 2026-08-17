@@ -525,11 +525,13 @@ export class BrandSplashHeader implements Component {
 		const paddingX = safeWidth > 1 ? 1 : 0;
 		const extraMetadata = this.options.getExtraMetadata?.() ?? [];
 
-		// [ logo | header ] layout: logo column on the left, a vertical divider,
-		// then the title/model/cwd rows on the right, vertically centered.
+		// [ logo | header ] layout: logo column on the left, a thin vertical
+		// divider, then the title/model/cwd rows on the right, vertically
+		// centered with two blank rows padded below the content.
 		const logoLines = this.logoRaw.map((line) => theme.fg("accent", line));
 		const logoWidth = this.logoCanvasWidth;
-		const divider = theme.fg("borderMuted", "│");
+		// Thin dotted divider so the splitter reads lighter than the box border.
+		const divider = theme.fg("borderMuted", "┆");
 		const dividerGap = 2;
 
 		const headerRows: string[] = [];
@@ -569,6 +571,10 @@ export class BrandSplashHeader implements Component {
 			const headerCell = truncateToWidth(headerLine, rightWidth, "");
 			const content = `${" ".repeat(paddingX)}${logoCell}${dividerCell}${headerCell}`;
 			lines.push(content + " ".repeat(Math.max(0, safeWidth - visibleWidth(content))));
+		}
+		// Two blank rows below the header content, inside the box border.
+		for (let row = 0; row < 2; row++) {
+			lines.push(" ".repeat(safeWidth));
 		}
 		return lines;
 	}
@@ -6242,21 +6248,12 @@ export class InteractiveMode {
 	}
 
 	private getTrayLocationLabel(): string | undefined {
-		const modelLabel = this.getModelTrayLabel();
+		// The model and shortcuts hint are not shown here: the model appears in
+		// the footer and the subagent summary fills this line.
 		const hasChildren = this.options.sessionHasChildren === true || (this.subagentSnapshots?.size ?? 0) > 0;
 		const depthLabel = formatAgentDepthLabel(this.options.sessionDepth, hasChildren);
-		const shortcutsHint = this.getShortcutsTrayHint();
 		const agentsHint = this.getAgentsViewTrayHint();
-		return [agentsHint, depthLabel, modelLabel, shortcutsHint]
-			.filter((label): label is string => label !== undefined)
-			.join("  ");
-	}
-
-	private getShortcutsTrayHint(): string | undefined {
-		if (!this.isNewChat() || this.editor.getText().length > 0) {
-			return undefined;
-		}
-		return keyText("app.shortcuts") ? keyHint("app.shortcuts", "for shortcuts") : "/hotkeys for shortcuts";
+		return [agentsHint, depthLabel].filter((label): label is string => label !== undefined).join("  ");
 	}
 
 	private isNewChat(): boolean {
@@ -6270,24 +6267,6 @@ export class InteractiveMode {
 		this.sessionHasMessages = hasMessages;
 		this.builtInHeader?.invalidate();
 		this.subagentSummaryLine.invalidate();
-	}
-
-	private getModelTrayLabel(): string {
-		const model = this.getCurrentModel();
-		if (!model) {
-			return "—";
-		}
-		const parts = [model.name];
-		if (model.reasoning) {
-			const level = this.connectionState?.thinkingLevel ?? "off";
-			if (level !== "off") {
-				parts.push(level);
-			}
-		}
-		if (this.connectionState?.serviceTier === "priority") {
-			parts.push("fast");
-		}
-		return parts.join(" • ");
 	}
 
 	private getAgentsViewTrayHint(): string | undefined {
