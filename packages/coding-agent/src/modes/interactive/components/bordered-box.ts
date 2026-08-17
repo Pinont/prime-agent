@@ -1,4 +1,4 @@
-import { type Component, truncateToWidth } from "@earendil-works/pi-tui";
+import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.js";
 
 /**
@@ -22,7 +22,8 @@ export class BorderedBox implements Component {
 		lines.push(color("╭" + "─".repeat(innerWidth) + "╮"));
 		for (const line of childLines) {
 			const inner = truncateToWidth(line, innerWidth, "");
-			lines.push(color("│") + inner.padEnd(innerWidth) + color("│"));
+			const pad = " ".repeat(Math.max(0, innerWidth - visibleWidth(inner)));
+			lines.push(color("│") + inner + pad + color("│"));
 		}
 		lines.push(color("╰" + "─".repeat(innerWidth) + "╯"));
 		return lines;
