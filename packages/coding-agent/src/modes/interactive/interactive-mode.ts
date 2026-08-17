@@ -214,6 +214,7 @@ import {
 	previousMode,
 } from "./components/mode-box.js";
 import type { AuthSelectorProvider } from "./components/oauth-selector.js";
+import { PaddedPanel } from "./components/padded-panel.js";
 import { PrimeOnboardingSplashComponent } from "./components/prime-onboarding-splash.js";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
 import { SettingsSelectorComponent } from "./components/settings-selector.js";
@@ -914,6 +915,13 @@ export function formatAgentDepthLabel(depth: number | undefined, hasChildren: bo
 	return `depth ${depth}`;
 }
 
+/**
+ * Margin (in terminal cells) applied around the whole TUI panel so the
+ * boxes do not run flush against the terminal edges.
+ */
+const PADDING_X = 4;
+const PADDING_Y = 2;
+
 export class InteractiveMode {
 	private static readonly EXIT_HINT_DURATION_MS = 2000;
 	private static readonly ESCAPE_REPEAT_WINDOW_MS = 500;
@@ -1129,6 +1137,8 @@ export class InteractiveMode {
 
 	// Header container that holds the built-in or custom header
 	private headerContainer: Container;
+	private paddedPanel: PaddedPanel | undefined;
+	private rootContainer: Container;
 
 	// Built-in header (logo + keybinding hints)
 	private builtInHeader: Component | undefined = undefined;
@@ -1178,6 +1188,7 @@ export class InteractiveMode {
 		this.ui.onCopy = (text) => {
 			void this.copyFullscreenSelection(text);
 		};
+		this.rootContainer = new Container();
 		this.headerContainer = new Container();
 		this.chatContainer = new Container();
 		this.shortcutGuideContainer = new Container();
@@ -1464,8 +1475,8 @@ export class InteractiveMode {
 			this.showWarning(formatMissingRipgrepMessage(rgResult));
 		}
 
-		// Add header container as first child
-		this.ui.addChild(this.headerContainer);
+		// Add header container as first child of the padded root
+		this.rootContainer.addChild(this.headerContainer);
 
 		// Brand splash: side-panel layout with structured runtime metadata on the right.
 		// The model/cwd are read through live getters, so they fill in once the
@@ -1536,7 +1547,11 @@ export class InteractiveMode {
 		for (const component of this.getPromptDockComponents()) {
 			this.promptDock.addChild(component);
 		}
-		this.ui.addChild(this.mainContainer);
+		this.rootContainer.addChild(this.mainContainer);
+		// Inset the whole TUI so the boxes don't run flush to the terminal edge.
+		this.paddedPanel = new PaddedPanel(this.rootContainer, PADDING_X, PADDING_Y);
+		this.ui.addChild(this.paddedPanel);
+
 		this.ui.setFocus(this.editor);
 
 		this.setupKeyHandlers();
@@ -7437,15 +7452,23 @@ export class InteractiveMode {
 	private applyFullscreen(enabled: boolean): void {
 		if (enabled) {
 			if (!process.stdout.isTTY) return;
+			// Pad the scroll stack (header + chat + widgets) and the dock
+			// (prompt + subagent line + footer) so the whole TUI panel keeps a
+			// margin from the terminal edges. The fullscreen renderer bypasses
+			// this.ui.children, so the padding is applied here as well.
+			const scrollStack = new Container();
+			for (const component of [
+				this.headerContainer,
+				this.mainViewContainer,
+				this.widgetContainerAbove,
+				...this.getPromptContextContainers(),
+				this.widgetContainerBelow,
+			]) {
+				scrollStack.addChild(component);
+			}
 			this.ui.enterFullscreen({
-				scroll: [
-					this.headerContainer,
-					this.mainViewContainer,
-					this.widgetContainerAbove,
-					...this.getPromptContextContainers(),
-					this.widgetContainerBelow,
-				],
-				dock: this.promptDock,
+				scroll: [new PaddedPanel(scrollStack, PADDING_X, PADDING_Y)],
+				dock: new PaddedPanel(this.promptDock, PADDING_X, 0),
 				mouse: this.settingsManager.getFullscreenMouse(),
 			});
 		} else {
