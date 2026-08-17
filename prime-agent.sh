@@ -9,8 +9,11 @@ fi
 # Running from source must not collide with an installed release's daemon:
 # give the source build its own daemon socket (config dir stays separate too
 # unless the user already overrode it).
-export PRIME_AGENT_DAEMON_SOCKET="${PRIME_AGENT_DAEMON_SOCKET:-$TMPDIR/prime-agent-source-$(id -u)/daemon.sock}"
 export PRIME_AGENT_CODING_AGENT_DIR="${PRIME_AGENT_CODING_AGENT_DIR:-$HOME/.prime-agent-source}"
+if [ -z "${PRIME_AGENT_DAEMON_SOCKET:-}" ]; then
+  export PRIME_AGENT_DAEMON_SOCKET="$TMPDIR/prime-agent-source-$(id -u)/daemon.sock"
+  mkdir -p "$(dirname "$PRIME_AGENT_DAEMON_SOCKET")"
+fi
 
 # Check for --no-env / --dist flags
 NO_ENV=false

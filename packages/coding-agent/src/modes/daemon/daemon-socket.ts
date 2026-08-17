@@ -224,17 +224,20 @@ export function defaultDaemonSocketDir(): string {
 }
 
 function ensureDefaultDaemonSocketDir(socketPath: string): void {
-	if (process.platform === "win32" || dirname(socketPath) !== defaultDaemonSocketDir()) {
+	const socketDir = dirname(socketPath);
+	if (process.platform === "win32") {
 		return;
 	}
 
-	if (!existsSync(defaultDaemonSocketDir())) {
-		mkdirSync(defaultDaemonSocketDir(), { recursive: true, mode: DAEMON_SOCKET_DIR_MODE });
+	// Custom socket overrides (PRIME_AGENT_DAEMON_SOCKET) may point anywhere;
+	// create the parent directory so the socket and its lock file can exist.
+	if (!existsSync(socketDir)) {
+		mkdirSync(socketDir, { recursive: true, mode: DAEMON_SOCKET_DIR_MODE });
 	}
 
-	const stat = lstatSync(defaultDaemonSocketDir());
+	const stat = lstatSync(socketDir);
 	if (!stat.isDirectory()) {
-		throw new Error(`Daemon socket directory exists and is not a directory: ${defaultDaemonSocketDir()}`);
+		throw new Error(`Daemon socket directory exists and is not a directory: ${socketDir}`);
 	}
 
 	if (typeof process.getuid === "function" && stat.uid !== process.getuid()) {
