@@ -97,9 +97,15 @@ EOF
 	set -- ${prime_agent_positional:+"$prime_agent_positional"}
 
 	if [ "$prime_agent_base_url" = "$prime_agent_unconfigured_base_url" ]; then
-		printf 'error: installer download URL is not configured.\n' >&2
-		printf 'Set PRIME_AGENT_DOWNLOAD_BASE_URL or use the installer published by the release workflow.\n' >&2
-		exit 1
+		if [ "$prime_agent_dry_run" = 1 ]; then
+			# Dry run must never hard-fail on a missing URL: report the plan
+			# state and let the caller decide. Real installs still require it.
+			prime_agent_base_url_unconfigured=1
+		else
+			printf 'error: installer download URL is not configured.\n' >&2
+			printf 'Set PRIME_AGENT_DOWNLOAD_BASE_URL or use the installer published by the release workflow.\n' >&2
+			exit 1
+		fi
 	fi
 
 	prime_agent_install_traps
@@ -135,10 +141,17 @@ EOF
 		fi
 	fi
 
-	version="$(resolve_prime_agent_version "$@")"
-	tarball_name="$prime_agent_package-$version.tgz"
-	tarball_url="$prime_agent_base_url/releases/v$version/$tarball_name"
-	checksums_url="$prime_agent_base_url/releases/v$version/SHA256SUMS"
+	if [ "${prime_agent_base_url_unconfigured:-0}" = 1 ]; then
+		version="<unknown>"
+		tarball_name="$prime_agent_package-<version>.tgz"
+		tarball_url="<PRIME_AGENT_DOWNLOAD_BASE_URL>/releases/v<version>/$tarball_name"
+		checksums_url="<PRIME_AGENT_DOWNLOAD_BASE_URL>/releases/v<version>/SHA256SUMS"
+	else
+		version="$(resolve_prime_agent_version "$@")"
+		tarball_name="$prime_agent_package-$version.tgz"
+		tarball_url="$prime_agent_base_url/releases/v$version/$tarball_name"
+		checksums_url="$prime_agent_base_url/releases/v$version/SHA256SUMS"
+	fi
 
 	if [ "$prime_agent_dry_run" = 1 ]; then
 		printf '\n%sPrime Agent install dry run%s\n' "$prime_agent_bold" "$prime_agent_reset"
@@ -146,6 +159,10 @@ EOF
 		printf '  Version:       v%s\n' "$version"
 		printf '  Package:       %s\n' "$prime_agent_package"
 		printf '  Command:       %s\n' "$prime_agent_cmd"
+		if [ "${prime_agent_base_url_unconfigured:-0}" = 1 ]; then
+			printf '%s  Download URL:  NOT CONFIGURED — this copy is a source checkout.\n' "$prime_agent_color_warning"
+			printf '                 Set PRIME_AGENT_DOWNLOAD_BASE_URL to resolve the version and URLs, or use the installer published by the release workflow.%s\n' "$prime_agent_reset"
+		fi
 		printf '  Tarball URL:   %s\n' "$tarball_url"
 		printf '  Checksums URL: %s\n' "$checksums_url"
 		if command -v "$prime_agent_cmd" >/dev/null 2>&1; then
@@ -154,7 +171,9 @@ EOF
 			printf '  Existing:      none found on PATH\n'
 		fi
 		printf '  Install cmd:   npm install -g %s\n' "$tarball_name"
-		if command -v curl >/dev/null 2>&1; then
+		if [ "${prime_agent_base_url_unconfigured:-0}" = 1 ]; then
+			printf '  Release check: skipped (download base URL not configured)\n'
+		elif command -v curl >/dev/null 2>&1; then
 			if curl -fsSI "$checksums_url" >/dev/null 2>&1; then
 				printf '  Release check: v%s and SHA256SUMS are reachable at the download base URL.\n' "$version"
 			else
