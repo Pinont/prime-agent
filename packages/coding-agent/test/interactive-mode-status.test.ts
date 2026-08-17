@@ -13,6 +13,7 @@ import {
 	type TUI,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
+import stripAnsi from "strip-ansi";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import type { AgentSessionRuntime } from "../src/core/agent-session-runtime.js";
 import { formatNoModelsAvailableMessage } from "../src/core/auth-guidance.js";
@@ -3936,6 +3937,10 @@ describe("InteractiveMode goal status announcements", () => {
 });
 
 describe("InteractiveMode tray goal label", () => {
+	beforeAll(() => {
+		initTheme("dark");
+	});
+
 	type TrayUsage = { contextWindow: number; tokens: number | null; percent: number | null };
 	type TrayLabelHarness = {
 		heartbeats: AgentConnectionHeartbeat[];
@@ -3946,6 +3951,7 @@ describe("InteractiveMode tray goal label", () => {
 		};
 		uiServices: { getContextUsage(): TrayUsage | undefined };
 		getTrayContextLabel(): string | undefined;
+		currentMode?: "plan" | "build" | "goal";
 	};
 	const getTrayContextLabel = (InteractiveMode.prototype as unknown as TrayLabelHarness).getTrayContextLabel;
 
@@ -3967,9 +3973,15 @@ describe("InteractiveMode tray goal label", () => {
 		};
 	}
 
+	// The mode box is rendered as a colored { mode } suffix on the tray label.
+	const modeSuffix = " · { build }";
+
 	test("shows active goals in the lower tray without an objective", () => {
 		const fakeThis = Object.create(InteractiveMode.prototype) as TrayLabelHarness;
 		fakeThis.heartbeats = [];
+		fakeThis.currentMode = "build";
+		fakeThis.currentMode = "build";
+		fakeThis.currentMode = "build";
 		fakeThis.connectionState = {
 			goal: {
 				active: true,
@@ -3983,11 +3995,12 @@ describe("InteractiveMode tray goal label", () => {
 		};
 		fakeThis.uiServices = { getContextUsage: () => undefined };
 
-		expect(getTrayContextLabel.call(fakeThis)).toBe("Pursuing goal (1m 05s)");
+		expect(stripAnsi(getTrayContextLabel.call(fakeThis) ?? "")).toBe(`Pursuing goal (1m 05s)${modeSuffix}`);
 	});
 
 	test("combines active goals with token/context usage in one lower-tray label", () => {
 		const fakeThis = Object.create(InteractiveMode.prototype) as TrayLabelHarness;
+		fakeThis.currentMode = "build";
 		fakeThis.heartbeats = [];
 		fakeThis.connectionState = {
 			goal: {
@@ -4002,11 +4015,14 @@ describe("InteractiveMode tray goal label", () => {
 		};
 		fakeThis.uiServices = { getContextUsage: () => undefined };
 
-		expect(getTrayContextLabel.call(fakeThis)).toBe("Pursuing goal (1m 05s) · 75k (75%)");
+		expect(stripAnsi(getTrayContextLabel.call(fakeThis) ?? "")).toBe(
+			`Pursuing goal (1m 05s) · 75k (75%)${modeSuffix}`,
+		);
 	});
 
 	test("combines active goals, active heartbeats, and context usage in one lower-tray label", () => {
 		const fakeThis = Object.create(InteractiveMode.prototype) as TrayLabelHarness;
+		fakeThis.currentMode = "build";
 		fakeThis.heartbeats = [{ job: createHeartbeat("active") }];
 		fakeThis.connectionState = {
 			goal: {
@@ -4022,11 +4038,14 @@ describe("InteractiveMode tray goal label", () => {
 		};
 		fakeThis.uiServices = { getContextUsage: () => undefined };
 
-		expect(getTrayContextLabel.call(fakeThis)).toBe("Pursuing goal (1m 05s) · 1 heartbeat · 75k (75%)");
+		expect(stripAnsi(getTrayContextLabel.call(fakeThis) ?? "")).toBe(
+			`Pursuing goal (1m 05s) · 1 heartbeat · 75k (75%)${modeSuffix}`,
+		);
 	});
 
 	test("omits the usage segment when token count is unknown", () => {
 		const fakeThis = Object.create(InteractiveMode.prototype) as TrayLabelHarness;
+		fakeThis.currentMode = "build";
 		fakeThis.heartbeats = [];
 		fakeThis.connectionState = {
 			goal: {
@@ -4041,7 +4060,7 @@ describe("InteractiveMode tray goal label", () => {
 		};
 		fakeThis.uiServices = { getContextUsage: () => undefined };
 
-		expect(getTrayContextLabel.call(fakeThis)).toBe("Pursuing goal (1m 05s)");
+		expect(stripAnsi(getTrayContextLabel.call(fakeThis) ?? "")).toBe(`Pursuing goal (1m 05s)${modeSuffix}`);
 	});
 });
 

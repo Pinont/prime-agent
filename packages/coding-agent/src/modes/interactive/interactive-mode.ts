@@ -205,14 +205,7 @@ import { FooterComponent } from "./components/footer.js";
 import { HeartbeatManagerComponent } from "./components/heartbeat-manager.js";
 import { InjectedPromptMessageComponent, isInjectedPromptMessage } from "./components/injected-prompt-message.js";
 import { formatKeyText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.js";
-import {
-	type AgentMode,
-	MODE_BORDER_COLOR,
-	MODE_LABEL,
-	ModeBox,
-	nextMode,
-	previousMode,
-} from "./components/mode-box.js";
+import { type AgentMode, MODE_BORDER_COLOR, MODE_LABEL, nextMode, previousMode } from "./components/mode-box.js";
 import type { AuthSelectorProvider } from "./components/oauth-selector.js";
 import { PrimeOnboardingSplashComponent } from "./components/prime-onboarding-splash.js";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
@@ -1007,9 +1000,6 @@ export class InteractiveMode {
 	/** Set when this client initiates a main-thread ! / !! run, so bash_end only
 	 *  triggers the shell follow-up for runs the local user performed. */
 	private ownBashFollowupPending = false;
-	private chatBorder: BorderedBox | undefined;
-	private modeBoxContainer: Container | undefined;
-	private modeBox: ModeBox | undefined;
 	private currentMode: AgentMode = "build";
 	// The pane-mounted component of our own side run; bash_end seeds the side
 	// transcript only when it ends this exact component.
@@ -1198,8 +1188,7 @@ export class InteractiveMode {
 		this.mainViewContainer = new Container();
 		this.promptDock = new Container();
 		this.footerSlot = new Container();
-		this.chatBorder = new BorderedBox(this.chatContainer, MODE_BORDER_COLOR[this.currentMode]);
-		this.mainViewContainer.addChild(theme.name === "claude-midnight" ? this.chatBorder : this.chatContainer);
+		this.mainViewContainer.addChild(this.chatContainer);
 		this.mainViewContainer.addChild(this.shortcutGuideContainer);
 		this.mainViewContainer.addChild(this.pendingMessagesContainer);
 		this.mainViewContainer.addChild(this.statusContainer);
@@ -1513,10 +1502,6 @@ export class InteractiveMode {
 		}
 
 		this.mainContainer.addChild(this.mainViewContainer);
-		this.modeBoxContainer = new Container();
-		this.modeBox = new ModeBox(this.currentMode);
-		this.modeBoxContainer.addChild(this.modeBox);
-		this.mainContainer.addChild(this.modeBoxContainer);
 		this.renderWidgets(); // Initialize with default spacer
 		this.mainContainer.addChild(this.widgetContainerAbove);
 		this.renderRecap();
@@ -4280,13 +4265,8 @@ export class InteractiveMode {
 	 */
 	private applyMode(mode: AgentMode): void {
 		this.currentMode = mode;
-		this.modeBox?.setMode(mode);
 		this.updateEditorBorderColor();
-		if (this.modeBoxContainer) {
-			this.modeBoxContainer.clear();
-			this.modeBox = new ModeBox(mode);
-			this.modeBoxContainer.addChild(this.modeBox);
-		}
+		this.footer.invalidate();
 		this.ui.requestRender();
 	}
 
@@ -6314,7 +6294,18 @@ export class InteractiveMode {
 			usage && typeof usage.tokens === "number" && typeof usage.percent === "number"
 				? `${formatTokenCount(usage.tokens)} (${Math.round(usage.percent)}%)`
 				: undefined;
-		return [goalLabel, heartbeatLabel, contextLabel].filter((label) => label !== undefined).join(" · ") || undefined;
+		const modeColored =
+			this.currentMode === "plan"
+				? theme.fg("accent", "{ plan }")
+				: this.currentMode === "build"
+					? theme.fg("success", "{ build }")
+					: this.currentMode === "goal"
+						? theme.fg("customMessageLabel", "{ goal }")
+						: undefined;
+		return (
+			[goalLabel, heartbeatLabel, contextLabel, modeColored].filter((label) => label !== undefined).join(" · ") ||
+			undefined
+		);
 	}
 
 	private getTrayHeartbeatLabel(): string | undefined {
@@ -7461,7 +7452,6 @@ export class InteractiveMode {
 				scroll: [
 					this.headerContainer,
 					this.mainViewContainer,
-					...(this.modeBoxContainer ? [this.modeBoxContainer] : []),
 					this.widgetContainerAbove,
 					...this.getPromptContextContainers(),
 					this.widgetContainerBelow,

@@ -99,7 +99,9 @@ export class SubagentSummaryLine implements Component, Focusable {
 		const contextLabel = this.getContextLabel()?.trim();
 		const left = overrideLabel || locationLabel || "";
 		if (!left && !contextLabel) return [];
-		const safeWidth = Math.max(1, width);
+		// Reserve two columns for the outer frame's side borders so the whole
+		// line (including the right-aligned mode box) fits inside the frame.
+		const safeWidth = Math.max(1, width - 2);
 		const right = contextLabel ?? "";
 		const gap = left && right ? 2 : 0;
 		const rightWidth = Math.min(visibleWidth(right), Math.max(0, safeWidth - gap));
