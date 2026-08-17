@@ -178,6 +178,7 @@ import { AgentMessageComponent } from "./components/agent-message.js";
 import { ArminComponent } from "./components/armin.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
+import { BorderedBox } from "./components/bordered-box.js";
 import { BorderedLoader } from "./components/bordered-loader.js";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.js";
 import { type FullPaneOverlayOptions, showFullPaneOverlay } from "./components/centered-overlay.js";
@@ -1201,7 +1202,12 @@ export class InteractiveMode {
 		this.subagentSummaryLine.onCancel = () => this.focusEditor();
 		this.subagentSummaryLine.onChatAction = (data) => this.handleSubagentSummaryChatAction(data);
 		this.footerDataProvider = new FooterDataProvider(this.uiServices.getInitialCwd());
-		this.footer = new FooterComponent(this.footerDataProvider);
+		this.footer = new FooterComponent(this.footerDataProvider, () => ({
+			model: this.getCurrentModel()?.name,
+			cwd: this.getCurrentCwd(),
+			context: this.getConnectionContextUsage(),
+			session: this.getSessionCostSummary(),
+		}));
 		this.footer.setAutoCompactEnabled(this.settingsManager.getCompactionEnabled());
 		this.setGoalAnnouncementBaseline(emptyGoalState());
 
@@ -1483,7 +1489,9 @@ export class InteractiveMode {
 					getStartHint: () => this.startHint,
 				},
 			);
-			this.headerContainer.addChild(this.builtInHeader);
+			this.headerContainer.addChild(
+				theme.name === "claude-midnight" ? new BorderedBox(this.builtInHeader) : this.builtInHeader,
+			);
 			this.headerContainer.addChild(new Spacer(1));
 		} else {
 			// Quiet startup: skip the splash and surrounding padding entirely.
@@ -1521,6 +1529,7 @@ export class InteractiveMode {
 			this.applyFullscreen(true);
 		}
 		this.isInitialized = true;
+		void this.refreshSessionCostSummary().then(() => this.footer.invalidate());
 
 		// Initialize extensions first so resources are shown before messages
 		await this.rebindCurrentSession();
@@ -2853,6 +2862,26 @@ export class InteractiveMode {
 
 	private getGoalState(): GoalState {
 		return this.connectionState?.goal ?? emptyGoalState();
+	}
+
+	private sessionCostSummary: { input: number; output: number; cacheRead: number; cost: number } | undefined;
+
+	private getSessionCostSummary(): { input: number; output: number; cacheRead: number; cost: number } | undefined {
+		return this.sessionCostSummary;
+	}
+
+	private async refreshSessionCostSummary(): Promise<void> {
+		try {
+			const stats = await this.agentConnection.getSessionStats();
+			this.sessionCostSummary = {
+				input: stats.tokens?.input ?? 0,
+				output: stats.tokens?.output ?? 0,
+				cacheRead: stats.tokens?.cacheRead ?? 0,
+				cost: stats.cost ?? 0,
+			};
+		} catch {
+			// Stats unavailable; keep the previous summary.
+		}
 	}
 
 	private getConnectionContextUsage(): AgentConnectionState["contextUsage"] {
@@ -5735,6 +5764,7 @@ export class InteractiveMode {
 				this.renderRecap();
 
 				this.applyOptimisticContextUsage();
+				void this.refreshSessionCostSummary().then(() => this.footer.invalidate());
 				// Auto-compaction can start server-side while this event is being handled.
 				// Do not hold its start event behind a stats RPC; stale refreshes are discarded.
 				void this.refreshConnectionContextUsage();

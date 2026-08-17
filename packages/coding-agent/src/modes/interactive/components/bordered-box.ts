@@ -1,0 +1,30 @@
+import { type Component, truncateToWidth } from "@earendil-works/pi-tui";
+import { theme } from "../theme/theme.js";
+
+/**
+ * BorderedBox — wraps a child component in its own border box (border in
+ * border): a top line, side borders, and a bottom line, all in the active
+ * theme's border color. Used by claude-midnight to draw the header and prompt
+ * as nested boxes inside the outer rounded frame.
+ */
+export class BorderedBox implements Component {
+	constructor(private readonly child: Component) {}
+
+	invalidate(): void {
+		this.child.invalidate();
+	}
+
+	render(width: number): string[] {
+		const color = (line: string) => theme.fg("border", line);
+		const innerWidth = Math.max(1, width - 2);
+		const childLines = this.child.render(innerWidth);
+		const lines: string[] = [];
+		lines.push(color("╭" + "─".repeat(innerWidth) + "╮"));
+		for (const line of childLines) {
+			const inner = truncateToWidth(line, innerWidth, "");
+			lines.push(color("│") + inner.padEnd(innerWidth) + color("│"));
+		}
+		lines.push(color("╰" + "─".repeat(innerWidth) + "╯"));
+		return lines;
+	}
+}
