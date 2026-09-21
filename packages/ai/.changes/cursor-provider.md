@@ -1,0 +1,1 @@
+- Added a Cursor provider (cursor-agent API) with Connect RPC streaming, PKCE subscription login via /login, and merged runtime/bundled model discovery.

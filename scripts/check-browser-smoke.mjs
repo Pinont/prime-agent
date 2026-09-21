@@ -14,6 +14,10 @@ try {
 		format: "esm",
 		logLevel: "silent",
 		outfile: outputPath,
+		// Node-only providers (e.g. the Cursor Connect-RPC transport) import
+		// node:* builtins that cannot resolve for a browser target. None of the
+		// smoke-test code paths execute them, so externalize at bundle time.
+		external: ["node:crypto", "node:http2"],
 	});
 	process.exit(0);
 } catch (error) {
