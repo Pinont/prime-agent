@@ -1,0 +1,1 @@
+- Added OpenRouter app attribution (HTTP-Referer, X-OpenRouter-Title, X-OpenRouter-Categories) to OpenRouter requests so Prime Agent usage is attributed on OpenRouter app stats.
