@@ -13,6 +13,7 @@ import { AssistantMessageEventStream } from "../utils/event-stream.js";
 import type { BedrockOptions } from "./amazon-bedrock.js";
 import type { AnthropicOptions } from "./anthropic.js";
 import type { AzureOpenAIResponsesOptions } from "./azure-openai-responses.js";
+import type { CursorAgentOptions } from "./cursor.js";
 import type { GoogleOptions } from "./google.js";
 import type { GoogleVertexOptions } from "./google-vertex.js";
 import type { MistralOptions } from "./mistral.js";
@@ -51,6 +52,11 @@ interface GoogleProviderModule {
 interface GoogleVertexProviderModule {
 	streamGoogleVertex: StreamFunction<"google-vertex", GoogleVertexOptions>;
 	streamSimpleGoogleVertex: StreamFunction<"google-vertex", SimpleStreamOptions>;
+}
+
+interface CursorAgentProviderModule {
+	streamCursorAgent: StreamFunction<"cursor-agent", CursorAgentOptions>;
+	streamSimpleCursorAgent: StreamFunction<"cursor-agent", SimpleStreamOptions>;
 }
 
 interface MistralProviderModule {
@@ -252,6 +258,22 @@ function loadGoogleVertexProviderModule(): Promise<
 	return googleVertexProviderModulePromise;
 }
 
+let cursorAgentProviderModulePromise:
+	| Promise<LazyProviderModule<"cursor-agent", CursorAgentOptions, SimpleStreamOptions>>
+	| undefined;
+function loadCursorAgentProviderModule(): Promise<
+	LazyProviderModule<"cursor-agent", CursorAgentOptions, SimpleStreamOptions>
+> {
+	cursorAgentProviderModulePromise ||= import("./cursor.js").then((module) => {
+		const provider = module as CursorAgentProviderModule;
+		return {
+			stream: provider.streamCursorAgent,
+			streamSimple: provider.streamSimpleCursorAgent,
+		};
+	});
+	return cursorAgentProviderModulePromise;
+}
+
 function loadMistralProviderModule(): Promise<
 	LazyProviderModule<"mistral-conversations", MistralOptions, SimpleStreamOptions>
 > {
@@ -328,6 +350,8 @@ export const streamGoogle = createLazyStream(loadGoogleProviderModule);
 export const streamSimpleGoogle = createLazySimpleStream(loadGoogleProviderModule);
 export const streamGoogleVertex = createLazyStream(loadGoogleVertexProviderModule);
 export const streamSimpleGoogleVertex = createLazySimpleStream(loadGoogleVertexProviderModule);
+export const streamCursorAgent = createLazyStream(loadCursorAgentProviderModule);
+export const streamSimpleCursorAgent = createLazySimpleStream(loadCursorAgentProviderModule);
 export const streamMistral = createLazyStream(loadMistralProviderModule);
 export const streamSimpleMistral = createLazySimpleStream(loadMistralProviderModule);
 export const streamOpenAICodexResponses = createLazyStream(loadOpenAICodexResponsesProviderModule);
@@ -350,6 +374,12 @@ export function registerBuiltInApiProviders(): void {
 		api: "openai-completions",
 		stream: streamOpenAICompletions,
 		streamSimple: streamSimpleOpenAICompletions,
+	});
+
+	registerApiProvider({
+		api: "cursor-agent",
+		stream: streamCursorAgent,
+		streamSimple: streamSimpleCursorAgent,
 	});
 
 	registerApiProvider({
