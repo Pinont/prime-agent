@@ -9,6 +9,15 @@
 
 export { anthropicOAuthProvider, loginAnthropic, refreshAnthropicToken } from "./anthropic.js";
 export {
+	cursorOAuthProvider,
+	extractCursorAccessTokenUserId,
+	generateCursorAuthParams,
+	isCursorTokenExpiringSoon,
+	loginCursor,
+	pollCursorAuth,
+	refreshCursorToken,
+} from "./cursor.js";
+export {
 	getGitHubCopilotBaseUrl,
 	githubCopilotOAuthProvider,
 	loginGitHubCopilot,
@@ -20,6 +29,7 @@ export * from "./types.js";
 export { getXaiSubscriptionModel, loginXai, refreshXaiToken, xaiOAuthProvider } from "./xai.js";
 
 import { anthropicOAuthProvider } from "./anthropic.js";
+import { cursorOAuthProvider } from "./cursor.js";
 import { githubCopilotOAuthProvider } from "./github-copilot.js";
 import { openaiCodexOAuthProvider } from "./openai-codex.js";
 import type { OAuthCredentials, OAuthProviderId, OAuthProviderInfo, OAuthProviderInterface } from "./types.js";
@@ -30,6 +40,7 @@ const BUILT_IN_OAUTH_PROVIDERS: OAuthProviderInterface[] = [
 	githubCopilotOAuthProvider,
 	openaiCodexOAuthProvider,
 	xaiOAuthProvider,
+	cursorOAuthProvider,
 ];
 
 const oauthProviderRegistry = new Map<string, OAuthProviderInterface>(
